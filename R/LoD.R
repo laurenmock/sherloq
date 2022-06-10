@@ -6,10 +6,6 @@
 #' @param LoB limit of blank
 #' @param approach method of LoD calculation
 #'
-#' @importFrom dplyr %>%
-#' @importFrom stats qnorm
-#' @importFrom stats sd
-#'
 #' @export
 
 # is L really supposed to be across all reagent lots?
@@ -21,7 +17,7 @@ LoD <- function(df, beta=0.05, LoB,
   # pct <- 1 - alpha
   #
   # # number of reagents
-  # B <- nrow(df)
+  B <- nrow(df)
 
   # classical nonparametric
   if(approach == "classical parametric"){
@@ -31,7 +27,7 @@ LoD <- function(df, beta=0.05, LoB,
 
     # standard deviation for each sample
     sd_sample_df <- do.call(data.frame,
-                             aggregate(pg.ml ~ sample, data = df,
+                             stats::aggregate(pg.ml ~ sample, data = df,
                                        FUN = function(x) c(sd = stats::sd(x), n = length(x))))
 
     # pooled standard deviation
@@ -39,7 +35,7 @@ LoD <- function(df, beta=0.05, LoB,
 
     # critical value
     L <- B # double-check this! says across all reagent lots...
-    J <- unique(df$sample) %>% length
+    J <- unique(df$sample) |> length()
     cp <- stats::qnorm(pct) / (1 - (1/(4*(L-J)) ))
 
     # calculate LoD
@@ -47,7 +43,7 @@ LoD <- function(df, beta=0.05, LoB,
   }
 
   if(approach == "precision profile"){
-
+    LoD_val <- 0
   }
 
 }

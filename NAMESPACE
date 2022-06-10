@@ -2,6 +2,3 @@
 
 export(LoB)
 export(LoD)
-importFrom(dplyr,"%>%")
-importFrom(stats,qnorm)
-importFrom(stats,sd)

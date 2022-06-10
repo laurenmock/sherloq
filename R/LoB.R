@@ -5,10 +5,6 @@
 #' @param alpha Alpha (type I error)
 #' @param parametric Parametric (TRUE) or non-parametric (FALSE). Default is non-parametric.
 #'
-#' @importFrom dplyr %>%
-#' @importFrom stats qnorm
-#' @importFrom stats sd
-#'
 #' @export
 
 # if 2 or 3 reagent lots --> do these calculations separately for each lot
@@ -43,12 +39,17 @@ LoB <- function(df, alpha=0.05, parametric = FALSE){
   # parametric
   if(parametric){
 
+    # test to see if normally distributed
+    if(shapiro.test(df$pg.ml)$p.value <= 0.05){
+      message("Warning: These values do not appear to be normally distributed. Consider a log transformation or the non-parametric approach.")
+      }
+
     # mean and SD
     mean_B <- mean(df$pg.ml)
     sd_B <- stats::sd(df$pg.ml)
 
     # critical value
-    K <- unique(df$sample) %>% length
+    K <- unique(df$sample) |> length()
     cp <- stats::qnorm(pct) / (1 - (1/(4*(B-K)) ))
 
     # calculate LoB

@@ -6,20 +6,19 @@
 \usage{
 LoD(
   df,
-  alpha = 0.05,
+  beta = 0.05,
   LoB,
-  approach = c("classical parametric", "classical nonparametric", "precision profile",
-    "probit")
+  approach = c("classical parametric", "precision profile", "probit")
 )
 }
 \arguments{
 \item{df}{data frame for one reagent lot}
 
-\item{alpha}{alpha level (type I error)}
+\item{beta}{type II error}
 
 \item{LoB}{limit of blank}
 
-\item{approach}{}
+\item{approach}{method of LoD calculation}
 }
 \description{
 Limit of Detection (LoD) Calculation
