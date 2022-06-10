@@ -2,6 +2,7 @@
 #' Limit of Detection (LoD) Calculation
 #'
 #' @param df data frame for one reagent lot
+#' @param col_values Name (in quotes) of the column with measurements.
 #' @param beta type II error
 #' @param LoB limit of blank
 #' @param approach method of LoD calculation
@@ -10,8 +11,8 @@
 
 # is L really supposed to be across all reagent lots?
 
-LoD <- function(df, beta=0.05, LoB,
-                approach = c("classical parametric", "precision profile", "probit")){
+LoD <- function(df, col_values, beta=0.05, LoB,
+                approach = c("classical", "precision profile", "probit")){
 
   # # percentile
   # pct <- 1 - alpha

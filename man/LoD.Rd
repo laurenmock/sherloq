@@ -6,13 +6,16 @@
 \usage{
 LoD(
   df,
+  col_values,
   beta = 0.05,
   LoB,
-  approach = c("classical parametric", "precision profile", "probit")
+  approach = c("classical", "precision profile", "probit")
 )
 }
 \arguments{
 \item{df}{data frame for one reagent lot}
+
+\item{col_values}{Name (in quotes) of the column with measurements.}
 
 \item{beta}{type II error}
 
