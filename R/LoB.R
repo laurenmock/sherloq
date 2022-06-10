@@ -31,25 +31,20 @@ LoB <- function(df, col_lot, col_sample, col_value,
 
   # if col_lot exists, find # of unique values (number of reagent lots), otherwise set to 1
   if(col_lot %in% names(df)){
-    n_lots <- unique(df[[col_lot]]) |> length()
-
-    # if 4+ lots, analyze all together
-    if(n_lots >= 4){
-
-    }
-
+    df$lot <- df[[col_lot]]
+    n_lots <- unique(df$lot) |> length()
   }else{
-    df$col_lot <- 1
+    df$lot <- 1
     n_lots <- 1
   }
 
   # loop through each reagent lot
-  # for(l in 1:n_lots){
-  #
-  #   lot_l <- df[col_lot == l]
-  #
-  #
-  # }
+  for(l in 1:n_lots){
+
+    lot_l <- df[col_lot == l]
+
+
+  }
 
 
 
