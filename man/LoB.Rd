@@ -4,20 +4,32 @@
 \alias{LoB}
 \title{Limit of Blank (LoB) Calculation}
 \usage{
-LoB(df, col_lot, col_sample, col_values, alpha = 0.05, parametric = FALSE)
+LoB(
+  df,
+  col_lot,
+  col_sample,
+  col_value,
+  alpha = 0.05,
+  parametric = FALSE,
+  always_sep_lots = FALSE
+)
 }
 \arguments{
 \item{df}{A data frame.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL.}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can also be NULL (no quotes).}
 
 \item{col_sample}{Name (in quotes) of the column with sample number.}
 
-\item{col_values}{Name (in quotes) of the column with measurements.}
+\item{col_value}{Name (in quotes) of the column with measurements.}
 
 \item{alpha}{Alpha (type I error). Default is 0.05.}
 
 \item{parametric}{Parametric (TRUE) or non-parametric (FALSE). Default is non-parametric.}
+
+\item{always_sep_lots}{If FALSE, reagent lots are evaluated according to CLSI guidelines
+(evaluated separately if 2 or 3 lots, evaluated together if >3 lots).
+If TRUE, all reagent lots are evaluated separately.}
 }
 \description{
 Limit of Blank (LoB) Calculation
