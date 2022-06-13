@@ -8,36 +8,65 @@
 #' @param alpha Alpha (type I error). Default is 0.05.
 #' @param parametric Parametric (TRUE) or non-parametric (FALSE). Default is non-parametric.
 #' @param always_sep_lots If FALSE, reagent lots are evaluated according to CLSI guidelines
-#' (evaluated separately if 2 or 3 lots, evaluated together if >3 lots).
-#' If TRUE, all reagent lots are evaluated separately.
+#' (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
+#' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
+#' Default is FALSE.
+#'
+#' @examples
+#' reagent_lot <- c(rep(1, 12*5), rep(2, 12*5))
+#' day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
+#' sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
+#' replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
+#' pg.ml <- c(2.6, -.8, 5.5, 6.0, 4.5, .6, -2.3, 3.4,
+#'             5.9, 7.6, 4.1, -1.4, 1.0, 2.9, 4.9, 8.0,
+#'             6.9, 5.0, 3.4, 1.2, 6.5, 5.6, -2.2, 2.3,
+#'             -4.4, -3.4, 7.0, 6.9, 4.3, 3.2, -1.4, 4.2,
+#'             5.9, 7.6, 3.8, 5.8, 1.5, -1.9, 5.1, 5.7,
+#'             4.1, 4.5, -.6, .5, 5.4, 7.6, 4.4, 6.6,
+#'             1.2, -.7, 6.1, 5.1, 4.8, 3.3, -2.8, -1.4,
+#'             8.7, 3.6, 5.1, 3.5, 4.6, 4.1, 1.6, 3.7,
+#'             2.2, .7, 4.6, 2.6, 1.1, -4.4, .9, .7,
+#'             9.2, 8.3, 4.8, 5.4, 4.8, 6.3, 5.4, 9.6,
+#'             7.7, 3.1, 6.1, 10.0, 6.1, 3.2, 3.9, 1.4,
+#'             3.1, 4.1, 1.0, 3.4, .1, .4, 2.9, -1.6,
+#'             4.0, 11.5, 4.5, 3.6, 4.4, 6.8, 7.1, 4.2,
+#'             3.7, 3.7, 5.3, 4.5, 4.0, 6.2, -.2, 2.3,
+#'             1.6, 2.6, 6.4, 5.7, 4.2, 3.7, 1.4, 1.5)
+#' blank_df <- data.frame(reagent_lot, day, sample, replicate, pg.ml)
+#'
+#' LoB_vals <- LoB(blank_df, col_lot = "reagent_lot", col_sample = "sample", col_value = "pg.ml")
+#'
+#' @return Returns the limit of blank (LoB) value(s).
 #'
 #' @export
 
 LoB <- function(df, col_lot, col_sample, col_value,
                 alpha=0.05, parametric = FALSE, always_sep_lots = FALSE){
 
-  # percentile
-  pct <- 1 - alpha
+  # figure out how to use match.arg to allow only TRUE and FALSE for parametric and always_sep_lots
 
   # confirm that all col_sample and col_value exist
-  stopifnot("`col_lot` does not exist" = col_lot %in% names(df) | is.null(col_lot))
-  stopifnot("`col_sample` does not exist" = col_sample %in% names(df))
-  stopifnot("`col_value` does not exist" = col_value %in% names(df))
+  stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df) | is.null(col_lot))
+  stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
+  stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
 
   # confirm that col_value is numeric
   stopifnot("`col_value` must be numeric" = is.numeric(df[[col_value]]))
 
-  # if col_lot is NULL, set # of lots equal to 1
+  # percentile
+  pct <- 1 - alpha
+
+  # if col_lot is NULL, set n_lots equal to 1
   if(is.null(col_lot)){
     df$lot <- 1
     n_lots <- 1
-  # otherwise find # of unique values (number of lots)
+  # otherwise set n_lots equal to # of unique values
   }else{
     df$lot <- df[[col_lot]]
     n_lots <- unique(df$lot) |> length()
   }
 
-  # combine lots if >3 lots and user has not specified always_sep_lots = TRUE
+  # if >3 lots and user has not set always_sep_lots = TRUE, combine all lots (CLSI guidelines)
   if(!always_sep_lots & (n_lots > 3)){
     df$lot <- 1
     n_lots <- 1
@@ -52,7 +81,7 @@ LoB <- function(df, col_lot, col_sample, col_value,
   for(l in 1:n_lots){
 
     # look at each lot separately
-    lot_l <- subset(df, lot == l)
+    lot_l <- df[df$lot == l,]
 
     # number of reagents
     B <- nrow(lot_l)
@@ -70,7 +99,6 @@ LoB <- function(df, col_lot, col_sample, col_value,
 
       # interpolate measurement for exact rank position (LoB)
       LoB_val[l] <- sorted[rank_below] + (rank_exact - rank_below)*(sorted[rank_above] - sorted[rank_below])
-
     }
 
     # parametric
@@ -96,4 +124,5 @@ LoB <- function(df, col_lot, col_sample, col_value,
     # print LoB for each reagent lot (if separate)
     print(paste0("LoB for lot ", l, ": ", LoB_val[l]))
   }
+  return(LoB_val)
 }
