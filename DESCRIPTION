@@ -1,7 +1,7 @@
 Package: detection
 Title: Detection Capability Calculations
 Version: 0.0.0.9000
-Authors@R: Lauren Mock, lmock@natera.com
+Author: Lauren Mock
 Description: Performs LoB, LoD, and LoQ calculations for analytical validation.
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
