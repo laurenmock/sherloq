@@ -47,41 +47,40 @@ LoD <- function(df, col_lot, col_value, LoB,
   # percentile
   pct <- 1 - beta
 
-  # classical (parametric)
-  if(approach == "classical"){
+  # find number of reagent lots
+  n_lots <- unique(df[[col_lot]]) |> length()
 
-    # test to see if normally distributed
-    shapiro_pval <- shapiro.test(df[[col_value]])$p.value |> round(4)
-    if(shapiro_pval <= 0.05){
-      message(paste0("Warning: These values do not appear to be normally distributed (Shapiro-Wilk test p-value = ", shapiro_pval,
-                     "). Consider a mathematical transformation or a different approach."))
-    }
+  # if there are more than 3 lots and always_sep_lots = FALSE OR all reagent lot values are the same,
+  # reset all reagent lot values to 1
+  if((n_lots > 3 & !always_sep_lots) | n_lots == 1){
+    df[[col_lot]] <- 1
+    n_lots <- 1
+  }
 
-    # find number of reagent lots
-    n_lots <- unique(df[[col_lot]]) |> length()
+  if(always_sep_lots & n_lots > 3){
+    message("Warning: Since there are at least four reagent lots in the data provided, CLSI guidelines recommend combining all reagent lots. Consider setting `always_sep_lots` = FALSE.")
+  }
 
-    # if there are more than 3 lots and always_sep_lots = FALSE OR all reagent lot values are the same,
-    # reset all reagent lot values to 1
-    if((n_lots > 3 & !always_sep_lots) | n_lots == 1){
-      df[[col_lot]] <- 1
-      n_lots <- 1
-    }
+  # loop through each reagent lot
+  LoD_vals <- list()
+  for(l in 1:n_lots){
 
-    if(always_sep_lots & n_lots > 3){
-      message("Warning: Since there are at least four reagent lots in the data provided, CLSI guidelines recommend combining all reagent lots. Consider setting `always_sep_lots` = FALSE.")
-    }
+    # look at each lot separately
+    lot_l <- df[df[[col_lot]] == l,]
 
-    # loop through each reagent lot
-    LoD_vals <- list()
-    for(l in 1:n_lots){
+    # classical (parametric)
+    if(approach == "classical"){
 
-      # look at each lot separately
-      lot_l <- df[df[[col_lot]] == l,]
+      # test to see if normally distributed
+      shapiro_pval <- shapiro.test(df[[col_value]])$p.value |> round(4)
+      if(shapiro_pval <= 0.05){
+        message(paste0("Warning: These values do not appear to be normally distributed (Shapiro-Wilk test p-value = ", shapiro_pval,
+                       "). Consider a mathematical transformation or a different approach."))
+      }
 
       # standard deviation for each sample in each reagent lot
       sd_sample_df <- do.call(data.frame, aggregate(pg.ml ~ sample, data = lot_l,
                                                     FUN = function(x) c(sd = sd(x), n = length(x))))
-
       # pooled standard deviation
       sd_L <- with(sd_sample_df, sqrt( ((pg.ml.n-1) %*% pg.ml.sd^2) / sum(pg.ml.n-1)) )
 
@@ -95,11 +94,47 @@ LoD <- function(df, col_lot, col_value, LoB,
       names(LoD_vals)[l] <- paste0("LoD_lot_", l)
     }
 
+    # precision profile
+    if(approach == "precision profile"){
+
+      # mean and standard deviation (SD_WL) for each sample in each reagent lot
+      mean_SDwl_df <- do.call(data.frame, aggregate(pg.ml ~ sample, data = lot_l,
+                                                    FUN = function(x) c(xbar = mean(x), sd = sd(x))))
+      # not just sd! SD_WL (within-laboratory precision)
+
+      # plot precision profiles
+      plot(mean_SDwl_df$pg.ml.xbar, mean_SDwl_df$pg.ml.sd,
+           xlab = "Measurand", ylab = "Within-lab Precision")
+
+      # fit first-order polynomial
+      pp_model1 <- lm(pg.ml.sd ~ pg.ml.xbar, data = mean_SDwl_df)
+      AIC1 <- AIC(pp_model1)
+      # fit second-order polynomial
+      pp_model2 <- lm(pg.ml.sd ~ poly(pg.ml.xbar, 2, raw = TRUE), data = mean_SDwl_df)
+      AIC2 <- AIC(pp_model2)
+
+      # critical value
+      N_tot <- nrow(lot_l)
+      K <- unique(lot_l$sample) |> length() # number of samples
+      cp <- qnorm(pct) / (1 - (1/(4*(N_tot-K)) ))
+
+      # select model with lower AIC
+      if(AIC1 <= AIC2){
+        init_LoD_vals[l] <- LoB + cp*(c(1, .51) %*% summary(pp_model1)$coef[,1])
+      }else{
+        init_LoD_vals[l] <- LoB + cp*(c(1, .51, .51^2) %*% summary(pp_model2)$coef[,1])
+      }
+
+
+    }
+
+
   }
 
-  # if(approach == "precision profile"){
+  # look at all lots from precision profile
+  if(approach == "precision profile"){
 
-  # }
+  }
 
   # if multiple LoD values, find the max
   if(length(LoD_vals) > 1){
