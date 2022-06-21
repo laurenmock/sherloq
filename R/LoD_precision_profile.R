@@ -156,17 +156,25 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
     K <- unique(lot_l[[col_sample]]) |> length() # number of samples
     cp <- qnorm(pct) / (1 - (1/(4*(N_tot-K)) ))
 
-    LoD_vals[l] <- LoB + cp*predict(all_mods[[final_mod]][[l]],
-                                    LoB |> as.data.frame() |> setNames("avg"))
+    init_LoD <- LoB + cp*predict(all_mods[[final_mod]][[l]],
+                                  newdata = LoB |> as.data.frame() |> setNames("avg"))
+
+    # now calculate what we would get using different measurand concentrations (instead of 0.51, LoB)
+    mc <- seq(from = LoB, to = init_LoD*2, by = .01)
+    trial_lod <- LoB + cp*predict(all_mods[[final_mod]][[l]],
+                             newdata = mc |> as.data.frame() |> setNames("avg"))
+    bias <- mc - trial_lod
+
+    # find measurand with bias closest to 0 and use those LoD values
+    LoD_vals[l] <- mc[which.min(abs(bias))]
+    names(LoD_vals)[l] <- paste0("LoD_lot_", l)
   }
 
-  # LoD val is correct for lot 1 but incorrect for lot 2!!
-  # weird, Nick got the same as me...
+  # if multiple LoD values, find the max
+  if(length(LoD_vals) > 1){
+    LoD_vals[n_lots + 1] <- unlist(LoD_vals) |> max()
+    names(LoD_vals)[n_lots + 1] <- "LoD_max"
+  }
 
-
-
-  # look at all lots together
-
-
-  # return(LoD_vals)
+  return(LoD_vals)
 }
