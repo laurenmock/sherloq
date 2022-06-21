@@ -12,7 +12,7 @@
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
 #'
-#' @return Returns the limit of detection (LoD) value(s).
+#' @return Returns the limit of detection (LoD) value.
 #'
 #' @example
 #' reagent_lot <- c(rep(1, 12*5), rep(2, 12*5))

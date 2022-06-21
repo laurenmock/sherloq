@@ -2,3 +2,5 @@
 
 export(LoB)
 export(LoD)
+export(LoD_classical)
+export(LoD_precision_profile)

@@ -2,7 +2,7 @@
 #' Limit of Blank (LoB) Calculation
 #'
 #' @param df A data frame with blank samples.
-#' @param col_lot Name (in quotes) of the column with reagent lot number.
+#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).
 #' @param col_sample Name (in quotes) of the column with sample number.
 #' @param col_value Name (in quotes) of the column with measurements.
 #' @param parametric Parametric (TRUE) or non-parametric (FALSE). Default is non-parametric.
@@ -13,9 +13,9 @@
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
 #'
-#' @return Returns the limit of blank (LoB) value(s).
+#' @return Returns the limit of blank (LoB) value.
 #'
-#' @example
+#' @examples
 #' reagent_lot <- c(rep(1, 12*5), rep(2, 12*5))
 #' day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
 #' sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
@@ -53,6 +53,12 @@ LoB <- function(df, col_lot, col_sample, col_value,
   # confirm that col_value is numeric
   stopifnot("`col_value` must be numeric" = is.numeric(df[[col_value]]))
 
+  # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
+  if(is.null(col_lot)){
+    col_lot <- "lot_number"
+    df[[col_lot]] <- 1
+  }
+
   # check for missing data
   if(!all(complete.cases(df))){
     # remove rows with missing values (and give warning)
@@ -66,13 +72,13 @@ LoB <- function(df, col_lot, col_sample, col_value,
   # find number of reagent lots
   n_lots <- unique(df[[col_lot]]) |> length()
 
-  # if there are more than 3 lots and always_sep_lots = FALSE OR all reagent lot values are the same,
-  # reset all reagent lot values to 1
-  if((n_lots > 3 & !always_sep_lots) | n_lots == 1){
+  # if there are more than 3 lots and always_sep_lots = FALSE, reset all reagent lot values to 1
+  if((n_lots > 3 & !always_sep_lots)){
     df[[col_lot]] <- 1
     n_lots <- 1
   }
 
+  # warning about always_sep_lots
   if(always_sep_lots & n_lots > 3){
     message("Warning: Since there are at least four reagent lots in the data provided, CLSI guidelines recommend combining all reagent lots. Consider setting `always_sep_lots` = FALSE.")
   }
