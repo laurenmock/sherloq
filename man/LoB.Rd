@@ -23,8 +23,8 @@ LoB(
 
 \item{col_value}{Name (in quotes) of the column with measurements.}
 
-\item{parametric}{Parametric (TRUE) or non-parametric (FALSE). Default is non-parametric.
-CLSI guidelines indicate that the non-parametric option is preferred in the vast majority of cases.}
+\item{parametric}{Parametric (TRUE) or non-parametric (FALSE). Default is non-parametric. CLSI
+guidelines indicate that the non-parametric option is preferred in the vast majority of cases.}
 
 \item{alpha}{Alpha (type I error). Default is 0.05.}
 

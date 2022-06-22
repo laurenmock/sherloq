@@ -63,7 +63,7 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
 
   # confirm that col_avg and col_sd are numeric
   stopifnot("`col_avg` must be numeric" = is.numeric(df[[col_avg]]))
-  stopifnot("`col_sd` must be numeric" = (is.numeric(df[[col_sd]]) & all(df[[col_sd]] > 0)))
+  stopifnot("`col_sd` must be numeric" = (is.numeric(df[[col_sd]]) & all(df[[col_sd]] >= 0)))
 
   # rename columns in df
   names(df)[names(df) == col_sd] <- "sd_wl"
@@ -96,7 +96,38 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
   quad_mod <- lapply(lots_list, function(x) lm(sd_wl ~ avg + I(avg^2), data = x))
 
   # Sadler
-  # sadler_mod <- lapply(lots_list, function(x)
+
+  # define structure of Sadler precision model (CLSI EP17 5.4.1.3, page 20)
+  # sim1 <- data.frame(x = iris$Sepal.Length, y = iris$Sepal.Width, z = iris$Petal.Length)
+  # model1 <- function(beta, data){
+  #   (beta[1] + data$x * beta[2]) ^ (beta[3])}
+  # model1(c(7, 1.5, 1), sim1)
+  # measure_distance <- function(mod, data) {
+  #   diff <- data$y - model1(mod, data)
+  #   sqrt(mean(diff ^ 2))}
+  # best <- optim(c(0, 0, 0), measure_distance, data = sim1)
+  # best$par
+#
+#   sadler <- function(beta, data){
+#     (beta[1] + beta[2] * data$avg) ^ (beta[3])}
+#
+#   # sadler(c(1,1,1), sample_df)
+#
+#   # root mean square error
+#   rmse_fun <- function(mod, data) {
+#     diff <- data$avg - sadler(mod, data)
+#     sqrt(mean(diff^2))}
+#
+#   # sadler_best <- optim(c(0, 0, 0), rmse_fun, data = sample_df)
+#   # sadler_best$par
+#
+#   sadler_best_1 <- optim(c(1, 1, 1), rmse_fun, data = sample_df |> subset(reagent_lot == 1))
+#
+#   newdat <- as.data.frame(new_vals) |> setNames("avg")
+#   coefs <- sadler_best_1$par
+#   new_preds_sad <- sadler(beta = coefs, data = newdat)
+#
+  # sadler_mod <- lapply(lots_list, function(x))
   #   nls(sd_wl ~ I((a + b*avg)), start = list(a = 0, b = 1), data = sample_df))
   sadler_mod <- lin_mod
   # fix this later!

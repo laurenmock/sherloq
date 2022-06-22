@@ -36,7 +36,8 @@ per sample times number of sample). If all reagent lots are pooled, use the tota
 of measurement values per sample (sum across all lots).}
 
 \item{model}{Choice of precision model. Default is to choose the model with the lowest AIC.
-One can also select to use a linear, quadratic, or Sadler model.}
+One can also select to use a linear, quadratic, or Sadler model, the three models most widely used
+in clinical literature (according to CLSI guidelines).}
 
 \item{beta}{Type II error. Default is 0.05.}
 
