@@ -43,11 +43,26 @@
 
 LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, always_sep_lots = FALSE){
 
+  # check for missing data
+  if(!all(complete.cases(df))){
+    # remove rows with missing values (and give warning)
+    df <- df[complete.cases(df),]
+    message("Warning: Ignoring rows with missing values.")
+  }
+
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
     col_lot <- "lot_number"
     df[[col_lot]] <- 1
   }
+
+  # confirm that column names exist in df
+  stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
+  stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
+  stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
+
+  # confirm that col_value is numeric
+  stopifnot("`col_value` must be numeric" = is.numeric(df[[col_value]]))
 
   # percentile
   pct <- 1 - beta
@@ -59,11 +74,6 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
   if((n_lots > 3 & !always_sep_lots)){
     df[[col_lot]] <- 1
     n_lots <- 1
-  }
-
-  # warning about always_sep_lots
-  if(always_sep_lots & n_lots > 3){
-    message("Warning: Since there are at least four reagent lots in the data provided, CLSI guidelines recommend combining all reagent lots. Consider setting `always_sep_lots` = FALSE.")
   }
 
   # loop through each reagent lot
@@ -98,10 +108,18 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
     names(LoD_vals)[l] <- paste0("LoD_lot_", l)
   }
 
-  # if multiple LoD values, find the max
-  if(length(LoD_vals) > 1){
+  # warning about always_sep_lots when n_lots > 3
+  if(always_sep_lots & length(LoD_vals) > 3){
+    message("Since there are at least four reagent lots in the data provided, CLSI guidelines
+            recommend combining all reagent lots. Set `always_sep_lots` = FALSE to obtain a single,
+            reportable estimate of LoD.")
+    # if only one LoD value, report as LoB_reported (not LoD_lot_1)
+  }else if(length(LoD_vals) == 1){
+    names(LoD_vals)[1] <- "LoD_reported"
+    # otherwise find max LoD to report
+  }else{
     LoD_vals[n_lots + 1] <- unlist(LoD_vals) |> max()
-    names(LoD_vals)[n_lots + 1] <- "LoD_max"
+    names(LoD_vals)[n_lots + 1] <- "LoD_reported"
   }
 
   return(LoD_vals)

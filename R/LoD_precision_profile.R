@@ -12,7 +12,8 @@
 #' per sample times number of sample). If all reagent lots are pooled, use the total number
 #' of measurement values per sample (sum across all lots).
 #' @param model Choice of precision model. Default is to choose the model with the lowest AIC.
-#' One can also select to use a linear, quadratic, or Sadler model.
+#' One can also select to use a linear, quadratic, or Sadler model, the three models most widely used
+#' in clinical literature (according to CLSI guidelines).
 #' @param beta Type II error. Default is 0.05.
 #' @param always_sep_lots If FALSE, reagent lots are evaluated according to CLSI guidelines
 #' (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
@@ -41,11 +42,28 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
 
   model <- match.arg(model)
 
+  # check for missing data
+  if(!all(complete.cases(df))){
+    # remove rows with missing values (and give warning)
+    df <- df[complete.cases(df),]
+    message("Warning: Ignoring rows with missing values.")
+  }
+
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
     col_lot <- "lot_number"
     df[[col_lot]] <- 1
   }
+
+  # confirm that column names exist in df
+  stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
+  stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
+  stopifnot("`col_avg` is not a column in df" = col_avg %in% names(df))
+  stopifnot("`col_sd` is not a column in df" = col_sd %in% names(df))
+
+  # confirm that col_avg and col_sd are numeric
+  stopifnot("`col_avg` must be numeric" = is.numeric(df[[col_avg]]))
+  stopifnot("`col_sd` must be numeric" = (is.numeric(df[[col_sd]]) & all(df[[col_sd]] > 0)))
 
   # rename columns in df
   names(df)[names(df) == col_sd] <- "sd_wl"
@@ -61,11 +79,6 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
   if((n_lots > 3 & !always_sep_lots)){
     df[[col_lot]] <- 1
     n_lots <- 1
-  }
-
-  # warning about always_sep_lots
-  if(always_sep_lots & n_lots > 3){
-    message("Warning: Since there are at least four reagent lots in the data provided, CLSI guidelines recommend combining all reagent lots. Consider setting `always_sep_lots` = FALSE.")
   }
 
   # make reagent lots separate elements in a list
@@ -105,13 +118,22 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
   # if user has selected a model
   if(model != "lowest AIC"){
     final_mod <- model
+
+    # if this model does have the lowest AIC
+    if(best_mod == final_mod){
+      message(paste0("The ", best_mod, " model, selected by the user, has the best model fit as
+                     determined by AIC."))
     # warning if this model does not have the lowest AIC
-    if(best_mod != final_mod){
-      message(paste0("Warning: The ", best_mod, " model has a lower AIC than the selected model."))
+    }else{
+      message(paste0("Warning: The ", best_mod, " model may have a better model fit
+                     than the selected model, as determined by AIC."))
     }
+
   # if user wants model with lowest AIC
   }else{
     final_mod <- best_mod
+    message(paste0("Selecting the ", best_mod, " model, which has the best model fit
+                   of the three choices as determined by AIC."))
   }
 
   #----- plot precision profiles -----#
@@ -120,10 +142,14 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
   x_lims <- c(min(sample_df[[col_avg]] - 0.1), max(sample_df[[col_avg]]) + 0.1)
   y_lims <- c(min(sample_df[[col_sd]] - 0.1), max(sample_df[[col_sd]]) + 0.1)
 
+  # color blind safe palette
+  pal <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
   # plot profile for first reagent lot
   lot_1 <- df[df[[col_lot]] == 1,]
+  plot.new()
   plot(lot_1[[col_avg]], lot_1[[col_sd]],
-       main = "Check model fit!", xlab = "Measurand", ylab = "Within-lab Precision", col = 2,
+       main = "Check model fit", xlab = "Measurand", ylab = "Within-lab Precision", col = pal[1],
        xlim = x_lims, ylim = y_lims, pch = 16)
   # and precision model
   new_vals <- seq(from = x_lims[1], to = x_lims[2], length = 20)
@@ -135,16 +161,17 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
     # loop through remaining reagent lots
     for(l in 2:n_lots){
       lot_l <- df[df[[col_lot]] == l,]
-      points(lot_l[[col_avg]], lot_l[[col_sd]], col = l+1, pch = 16)
+      points(lot_l[[col_avg]], lot_l[[col_sd]], col = pal[l+1], pch = 16)
       # and precision model
       new_preds <- predict(all_mods[[final_mod]][[l]], new_vals |> as.data.frame() |> setNames("avg"))
-      lines(new_vals, new_preds, col = l+1, lty = 2)
+      lines(new_vals, new_preds, col = pal[l+1], lty = 2)
     }
   }
+  mod_plot <- recordPlot()
 
   #----- calculate LoD -----#
 
-  # # loop through each reagent lot
+  # loop through each reagent lot
   LoD_vals <- list()
   for(l in 1:n_lots){
 
@@ -170,11 +197,22 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
     names(LoD_vals)[l] <- paste0("LoD_lot_", l)
   }
 
-  # if multiple LoD values, find the max
-  if(length(LoD_vals) > 1){
+  # warning about always_sep_lots when n_lots > 3
+  if(always_sep_lots & length(LoD_vals) > 3){
+    message("Since there are at least four reagent lots in the data provided, CLSI guidelines
+            recommend combining all reagent lots. Set `always_sep_lots` = FALSE to obtain a single,
+            reportable estimate of LoD.")
+    # if only one LoD value, report as LoB_reported (not LoD_lot_1)
+  }else if(length(LoD_vals) == 1){
+    names(LoD_vals)[1] <- "LoD_reported"
+    # otherwise find max LoD to report
+  }else{
     LoD_vals[n_lots + 1] <- unlist(LoD_vals) |> max()
-    names(LoD_vals)[n_lots + 1] <- "LoD_max"
+    names(LoD_vals)[n_lots + 1] <- "LoD_reported"
   }
 
-  return(LoD_vals)
+  output <- list(LoD_vals, mod_plot)
+  names(output) <- c("LoD_values", "precision_model_plot")
+
+  return(output)
 }

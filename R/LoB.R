@@ -5,8 +5,8 @@
 #' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).
 #' @param col_sample Name (in quotes) of the column with sample number.
 #' @param col_value Name (in quotes) of the column with measurements.
-#' @param parametric Parametric (TRUE) or non-parametric (FALSE). Default is non-parametric.
-#' CLSI guidelines indicate that the non-parametric option is preferred in the vast majority of cases.
+#' @param parametric Parametric (TRUE) or non-parametric (FALSE). Default is non-parametric. CLSI
+#' guidelines indicate that the non-parametric option is preferred in the vast majority of cases.
 #' @param alpha Alpha (type I error). Default is 0.05.
 #' @param always_sep_lots If FALSE, reagent lots are evaluated according to CLSI guidelines
 #' (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
@@ -45,7 +45,7 @@
 LoB <- function(df, col_lot, col_sample, col_value,
                 parametric = FALSE, alpha = 0.05, always_sep_lots = FALSE){
 
-  # confirm that all col_sample and col_value exist
+  # confirm that column names exist in df
   stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
   stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
   stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
@@ -78,16 +78,12 @@ LoB <- function(df, col_lot, col_sample, col_value,
     n_lots <- 1
   }
 
-  # warning about always_sep_lots
-  if(always_sep_lots & n_lots > 3){
-    message("Warning: Since there are at least four reagent lots in the data provided, CLSI guidelines recommend combining all reagent lots. Consider setting `always_sep_lots` = FALSE.")
-  }
-
   if(parametric){
     # test to see if normally distributed
     shapiro_pval <- stats::shapiro.test(df[[col_value]])$p.value |> round(4)
     if(shapiro_pval <= 0.05){
-      message(paste0("Warning: These values do not appear to be normally distributed (Shapiro-Wilk test p-value = ", shapiro_pval,
+      message(paste0("Warning: These values do not appear to be normally distributed
+                     (Shapiro-Wilk test p-value = ", shapiro_pval,
                      "). Consider the non-parametric approach (recommended)."))
     }
   }
@@ -114,7 +110,8 @@ LoB <- function(df, col_lot, col_sample, col_value,
       sorted <- sort(lot_l[[col_value]])
 
       # interpolate measurement for exact rank position (LoB)
-      LoB_vals[l] <- sorted[rank_below] + (rank_exact - rank_below)*(sorted[rank_above] - sorted[rank_below])
+      LoB_vals[l] <- sorted[rank_below] +
+        (rank_exact - rank_below)*(sorted[rank_above] - sorted[rank_below])
     }
 
     # parametric
@@ -134,11 +131,21 @@ LoB <- function(df, col_lot, col_sample, col_value,
     names(LoB_vals)[l] <- paste0("LoB_lot_", l)
   }
 
-  # if multiple LoB values, find the max
-  if(length(LoB_vals) > 1){
+  # warning about always_sep_lots when n_lots > 3
+  if(always_sep_lots & length(LoB_vals) > 3){
+    message("Since there are at least four reagent lots in the data provided, CLSI guidelines
+            recommend combining all reagent lots. Set `always_sep_lots` = FALSE to obtain a single,
+            reportable estimate of LoB.")
+  # if only one LoB value, report as LoB_reported (not LoB_lot_1)
+  }else if(length(LoB_vals) == 1){
+    names(LoB_vals)[1] <- "LoB_reported"
+  # otherwise find max LoB to report
+  }else{
     LoB_vals[n_lots + 1] <- unlist(LoB_vals) |> max()
-    names(LoB_vals)[n_lots + 1] <- "LoB_max"
+    names(LoB_vals)[n_lots + 1] <- "LoB_reported"
   }
 
+  # return list of LoB values
   return(LoB_vals)
+
 }

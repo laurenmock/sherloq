@@ -7,21 +7,36 @@
 LoD_precision_profile(
   df,
   col_lot,
-  col_value,
+  col_sample,
+  col_avg,
+  col_sd,
   LoB,
-  approach = c("classical", "precision profile", "probit"),
+  N,
+  model = c("lowest AIC", "linear", "quadratic", "Sadler"),
   beta = 0.05,
   always_sep_lots = FALSE
 )
 }
 \arguments{
-\item{df}{A data frame with low-level samples.}
+\item{df}{A data frame with with the mean value and within-laboratory precision (obtained
+from CLSI EP05) for each sample from each reagent lot.}
 
 \item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).}
 
-\item{col_value}{Name (in quotes) of the column with measurements.}
+\item{col_sample}{Name (in quotes) of the column with sample number.}
 
-\item{LoB}{Limit of blank (LoB). This value should be the same for all reagent lots.}
+\item{col_avg}{Name (in quotes) of the column with measurements.}
+
+\item{col_sd}{Name (in quotes) of the column with within-lab precision.}
+
+\item{LoB}{Limit of blank (LoB).}
+
+\item{N}{Total number of measurement values per sample per reagent lot (number of measurements
+per sample times number of sample). If all reagent lots are pooled, use the total number
+of measurement values per sample (sum across all lots).}
+
+\item{model}{Choice of precision model. Default is to choose the model with the lowest AIC.
+One can also select to use a linear, quadratic, or Sadler model.}
 
 \item{beta}{Type II error. Default is 0.05.}
 
@@ -36,4 +51,16 @@ profile approach.
 }
 \description{
 Limit of Detection (LoD) Calculation--Precision Profile Approach
+}
+\examples{
+reagent_lot <- c(rep(1, 6), rep(2, 6))
+sample <- rep(c(A,B,C,D,E,F), times = 2)
+avg <- c(.69, 1.42, 2.65, 4.08, 6.08, 10.36, .78, 1.73, 2.89, 3.82, 6.33, 10.92)
+sd_wl <- c(.39, .39, .46, .55, .64, 1.12, .29, .54, .55, .63, .82, 1.38)
+
+sample_df <- data.frame(reagent_lot, sample, avg, sd_wl)
+
+LoD(sample_df, col_lot = "reagent_lot", col_sample = "sample", col_avg = "avg",
+col_sd = "sd_wl", LoB = 0.51, N = 80*6)
+
 }
