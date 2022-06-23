@@ -61,18 +61,23 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
   stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
   stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
 
+  # rename columns in df
+  names(df)[names(df) == col_lot] <- "lot"
+  names(df)[names(df) == col_sample] <- "sample"
+  names(df)[names(df) == col_value] <- "val"
+
   # confirm that col_value is numeric
-  stopifnot("`col_value` must be numeric" = is.numeric(df[[col_value]]))
+  stopifnot("`col_value` must be numeric" = is.numeric(df$val))
 
   # percentile
   pct <- 1 - beta
 
   # find number of reagent lots
-  n_lots <- unique(df[[col_lot]]) |> length()
+  n_lots <- unique(df$lot) |> length()
 
   # if there are more than 3 lots and always_sep_lots = FALSE, reset all reagent lot values to 1
   if((n_lots > 3 & !always_sep_lots)){
-    df[[col_lot]] <- 1
+    df$lot <- 1
     n_lots <- 1
   }
 
@@ -81,26 +86,26 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
   for(l in 1:n_lots){
 
     # look at each lot separately
-    lot_l <- df[df[[col_lot]] == l,]
+    lot_l <- df[df$lot == l,]
 
     # test to see if normally distributed
-    shapiro_pval <- shapiro.test(df[[col_value]])$p.value |> round(4)
+    shapiro_pval <- shapiro.test(df$val)$p.value |> round(4)
     if(shapiro_pval <= 0.05){
       message(paste0("Warning: These values do not appear to be normally distributed (Shapiro-Wilk test p-value = ", shapiro_pval,
                      "). Consider a mathematical transformation or a different approach."))
     }
 
     # standard deviation for each sample in each reagent lot
-    sd_sample_df <- do.call(data.frame, aggregate(lot_l[[col_value]] ~ lot_l[[col_sample]], data = lot_l,
+    sd_sample_df <- do.call(data.frame, aggregate(lot_l$val ~ lot_l$sample, data = lot_l,
                                                   FUN = function(x) c(sd = sd(x), n = length(x)))) |>
-      setNames(c("sample", "pg.ml.sd", "pg.ml.n"))
+      setNames(c("sample", "val_sd", "val_n"))
 
     # pooled standard deviation
-    sd_L <- with(sd_sample_df, sqrt( ((pg.ml.n-1) %*% pg.ml.sd^2) / sum(pg.ml.n-1)) )
+    sd_L <- with(sd_sample_df, sqrt( ((val_n-1) %*% val_sd^2) / sum(val_n-1)) )
 
     # critical value
     L <- nrow(lot_l) # number of results
-    J <- unique(lot_l[[col_sample]]) |> length() # number of samples
+    J <- unique(lot_l$sample) |> length() # number of samples
     cp <- qnorm(pct) / (1 - (1/(4*(L-J)) ))
 
     # calculate LoD

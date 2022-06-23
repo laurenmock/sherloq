@@ -50,13 +50,18 @@ LoB <- function(df, col_lot, col_sample, col_value,
   stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
   stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
 
+  # rename columns in df
+  names(df)[names(df) == col_lot] <- "lot"
+  names(df)[names(df) == col_sample] <- "sample"
+  names(df)[names(df) == col_value] <- "val"
+
   # confirm that col_value is numeric
-  stopifnot("`col_value` must be numeric" = is.numeric(df[[col_value]]))
+  stopifnot("`col_value` must be numeric" = is.numeric(df$val))
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
     col_lot <- "lot_number"
-    df[[col_lot]] <- 1
+    df$lot <- 1
   }
 
   # check for missing data
@@ -70,17 +75,17 @@ LoB <- function(df, col_lot, col_sample, col_value,
   pct <- 1 - alpha
 
   # find number of reagent lots
-  n_lots <- unique(df[[col_lot]]) |> length()
+  n_lots <- unique(df$lot) |> length()
 
   # if there are more than 3 lots and always_sep_lots = FALSE, reset all reagent lot values to 1
   if((n_lots > 3 & !always_sep_lots)){
-    df[[col_lot]] <- 1
+    df$lot <- 1
     n_lots <- 1
   }
 
   if(parametric){
     # test to see if normally distributed
-    shapiro_pval <- stats::shapiro.test(df[[col_value]])$p.value |> round(4)
+    shapiro_pval <- stats::shapiro.test(df$val)$p.value |> round(4)
     if(shapiro_pval <= 0.05){
       message(paste0("Warning: These values do not appear to be normally distributed
                      (Shapiro-Wilk test p-value = ", shapiro_pval,
@@ -93,7 +98,7 @@ LoB <- function(df, col_lot, col_sample, col_value,
   for(l in 1:n_lots){
 
     # look at each lot separately
-    lot_l <- df[df[[col_lot]] == l,]
+    lot_l <- df[df$lot == l,]
 
     # number of results
     B <- nrow(lot_l)
@@ -107,7 +112,7 @@ LoB <- function(df, col_lot, col_sample, col_value,
       rank_above <- ceiling(rank_exact)
 
       # sort measurements
-      sorted <- sort(lot_l[[col_value]])
+      sorted <- sort(lot_l$val)
 
       # interpolate measurement for exact rank position (LoB)
       LoB_vals[l] <- sorted[rank_below] +
@@ -118,11 +123,11 @@ LoB <- function(df, col_lot, col_sample, col_value,
     if(parametric){
 
       # mean and SD
-      mean_B <- mean(lot_l[[col_value]])
-      sd_B <- stats::sd(lot_l[[col_value]])
+      mean_B <- mean(lot_l$val)
+      sd_B <- stats::sd(lot_l$val)
 
       # critical value
-      K <- unique(lot_l[[col_sample]]) |> length()
+      K <- unique(lot_l$sample) |> length()
       cp <- stats::qnorm(pct) / (1 - (1/(4*(B-K)) ))
 
       # calculate LoB

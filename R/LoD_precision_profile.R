@@ -61,28 +61,30 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
   stopifnot("`col_avg` is not a column in df" = col_avg %in% names(df))
   stopifnot("`col_sd` is not a column in df" = col_sd %in% names(df))
 
-  # confirm that col_avg and col_sd are numeric
-  stopifnot("`col_avg` must be numeric" = is.numeric(df[[col_avg]]))
-  stopifnot("`col_sd` must be numeric" = (is.numeric(df[[col_sd]]) & all(df[[col_sd]] >= 0)))
-
   # rename columns in df
-  names(df)[names(df) == col_sd] <- "sd_wl"
+  names(df)[names(df) == col_lot] <- "lot"
+  names(df)[names(df) == col_sample] <- "sample"
   names(df)[names(df) == col_avg] <- "avg"
+  names(df)[names(df) == col_sd] <- "sd_wl"
+
+  # confirm that col_avg and col_sd are numeric
+  stopifnot("`col_avg` must be numeric" = is.numeric(df$avg))
+  stopifnot("`col_sd` must be numeric" = (is.numeric(df$sd_wl) & all(df$sd_wl >= 0)))
 
   # percentile
   pct <- 1 - beta
 
   # find number of reagent lots
-  n_lots <- unique(df[[col_lot]]) |> length()
+  n_lots <- unique(df$lot) |> length()
 
   # if there are more than 3 lots and always_sep_lots = FALSE, reset all reagent lot values to 1
   if((n_lots > 3 & !always_sep_lots)){
-    df[[col_lot]] <- 1
+    df$lot <- 1
     n_lots <- 1
   }
 
   # make reagent lots separate elements in a list
-  lots_list <- split(df, f = df[[col_lot]])
+  lots_list <- split(df, f = df$lot)
 
 
   #----- precision models -----#
@@ -108,25 +110,23 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
   # best <- optim(c(0, 0, 0), measure_distance, data = sim1)
   # best$par
 #
-#   sadler <- function(beta, data){
-#     (beta[1] + beta[2] * data$avg) ^ (beta[3])}
-#
-#   # sadler(c(1,1,1), sample_df)
-#
-#   # root mean square error
-#   rmse_fun <- function(mod, data) {
-#     diff <- data$avg - sadler(mod, data)
-#     sqrt(mean(diff^2))}
-#
-#   # sadler_best <- optim(c(0, 0, 0), rmse_fun, data = sample_df)
-#   # sadler_best$par
-#
-#   sadler_best_1 <- optim(c(1, 1, 1), rmse_fun, data = sample_df |> subset(reagent_lot == 1))
-#
-#   newdat <- as.data.frame(new_vals) |> setNames("avg")
-#   coefs <- sadler_best_1$par
-#   new_preds_sad <- sadler(beta = coefs, data = newdat)
-#
+  sadler <- function(beta, data){
+    (beta[1] + beta[2] * data$avg) ^ (beta[3])}
+
+  # root mean square error
+  rmse_fun <- function(mod, data) {
+    diff <- data$sd_wl - sadler(mod, data)
+    sqrt(mean(diff^2))}
+
+  # sadler_best <- optim(c(0, 0, 0), rmse_fun, data = sample_df)
+  # sadler_best$par
+
+  sadler_best_1 <- optim(c(0, 1, 1), rmse_fun, data = sample_df |> subset(reagent_lot == 1))
+
+  newdat <- as.data.frame(new_vals) |> setNames("avg")
+  coefs <- sadler_best_1$par
+  new_preds_sad <- sadler(beta = coefs, data = newdat)
+
   # sadler_mod <- lapply(lots_list, function(x))
   #   nls(sd_wl ~ I((a + b*avg)), start = list(a = 0, b = 1), data = sample_df))
   sadler_mod <- lin_mod
@@ -170,16 +170,20 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
   #----- plot precision profiles -----#
 
   # set x and y limits for plot
-  x_lims <- c(min(sample_df[[col_avg]] - 0.1), max(sample_df[[col_avg]]) + 0.1)
-  y_lims <- c(min(sample_df[[col_sd]] - 0.1), max(sample_df[[col_sd]]) + 0.1)
+  x_lims <- c(min(sample_df$avg - 0.1), max(sample_df$avg) + 0.1)
+  y_lims <- c(min(sample_df$sd_wl - 0.1), max(sample_df$sd_wl) + 0.1)
 
   # color blind safe palette
   pal <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
   # plot profile for first reagent lot
-  lot_1 <- df[df[[col_lot]] == 1,]
+  lot_1 <- df[df$lot == 1,]
   plot.new()
-  plot(lot_1[[col_avg]], lot_1[[col_sd]],
+  par(mfrow = c(1,1),
+      mar = c(3, 3, 2, 1),
+      mgp = c(2, 0.5, 0),
+      tck = -.01)
+  plot(lot_1$avg, lot_1$sd_wl,
        main = "Check model fit", xlab = "Measurand", ylab = "Within-lab Precision", col = pal[1],
        xlim = x_lims, ylim = y_lims, pch = 16)
   # and precision model
@@ -191,13 +195,22 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
   if(n_lots > 1){
     # loop through remaining reagent lots
     for(l in 2:n_lots){
-      lot_l <- df[df[[col_lot]] == l,]
-      points(lot_l[[col_avg]], lot_l[[col_sd]], col = pal[l+1], pch = 16)
+      lot_l <- df[df$lot == l,]
+      points(lot_l$avg, lot_l$sd_wl, col = pal[l], pch = 16)
       # and precision model
       new_preds <- predict(all_mods[[final_mod]][[l]], new_vals |> as.data.frame() |> setNames("avg"))
-      lines(new_vals, new_preds, col = pal[l+1], lty = 2)
+      lines(new_vals, new_preds, col = pal[l], lty = 2)
     }
   }
+
+  # add legend
+  labs <- vector()
+  cols <- vector()
+  for(l in 1:n_lots){
+    labs[l] <- paste0("Lot ", l)
+    cols[l] <- pal[l]}
+  legend("topleft", pch = 16, lty = 2, legend = labs, col = cols, cex = 0.7, bty = "n")
+
   mod_plot <- recordPlot()
 
   #----- calculate LoD -----#
@@ -207,11 +220,11 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
   for(l in 1:n_lots){
 
     # look at each lot separately
-    lot_l <- df[df[[col_lot]] == l,]
+    lot_l <- df[df$lot == l,]
 
     # critical value
     N_tot <- N # total number of measurements per reagent lot
-    K <- unique(lot_l[[col_sample]]) |> length() # number of samples
+    K <- unique(lot_l$sample) |> length() # number of samples
     cp <- qnorm(pct) / (1 - (1/(4*(N_tot-K)) ))
 
     init_LoD <- LoB + cp*predict(all_mods[[final_mod]][[l]],
