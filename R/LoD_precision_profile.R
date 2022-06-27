@@ -89,83 +89,70 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
 
   #----- precision models -----#
 
-  mod_names <- c("linear", "quadratic", "sadler")
+  # if user selected Sadler model:
+  if(model == "Sadler"){
 
-  # linear
-  lin_mod <- lapply(lots_list, function(x) lm(sd_wl ~ avg, data = x))
+    # define Sadler model form (as defined in EP17)
+    sadler <- function(beta, data){
+      (beta[1] + beta[2] * data$avg) ^ (beta[3])}
 
-  # quadratic
-  quad_mod <- lapply(lots_list, function(x) lm(sd_wl ~ avg + I(avg^2), data = x))
+    # root mean square error (minimize)
+    rmse_fun <- function(beta, data) {
+      diff <- data$sd_wl - sadler(beta, data)
+      sqrt(mean(diff^2))}
 
-  # Sadler
+    # apply to each reagent lot
+    sadler_mod <- lapply(lots_list, function(x)
+      optim(c(0, 1, 1), rmse_fun, data = x))
 
-  # define structure of Sadler precision model (CLSI EP17 5.4.1.3, page 20)
-  # sim1 <- data.frame(x = iris$Sepal.Length, y = iris$Sepal.Width, z = iris$Petal.Length)
-  # model1 <- function(beta, data){
-  #   (beta[1] + data$x * beta[2]) ^ (beta[3])}
-  # model1(c(7, 1.5, 1), sim1)
-  # measure_distance <- function(mod, data) {
-  #   diff <- data$y - model1(mod, data)
-  #   sqrt(mean(diff ^ 2))}
-  # best <- optim(c(0, 0, 0), measure_distance, data = sim1)
-  # best$par
-#
-  sadler <- function(beta, data){
-    (beta[1] + beta[2] * data$avg) ^ (beta[3])}
-
-  # root mean square error
-  rmse_fun <- function(mod, data) {
-    diff <- data$sd_wl - sadler(mod, data)
-    sqrt(mean(diff^2))}
-
-  # sadler_best <- optim(c(0, 0, 0), rmse_fun, data = sample_df)
-  # sadler_best$par
-
-  sadler_best_1 <- optim(c(0, 1, 1), rmse_fun, data = sample_df |> subset(reagent_lot == 1))
-
-  newdat <- as.data.frame(new_vals) |> setNames("avg")
-  coefs <- sadler_best_1$par
-  new_preds_sad <- sadler(beta = coefs, data = newdat)
-
-  # sadler_mod <- lapply(lots_list, function(x))
-  #   nls(sd_wl ~ I((a + b*avg)), start = list(a = 0, b = 1), data = sample_df))
-  sadler_mod <- lin_mod
-  # fix this later!
-
-  all_mods <- list(lin_mod, quad_mod, sadler_mod) |> setNames(mod_names)
-
-  # find model with lowest AIC for each reagent lot
-  min_AIC <- vector()
-  for(l in 1:n_lots){
-    min_AIC[l] <- c(lapply(lin_mod, AIC)[[l]],
-                    lapply(quad_mod, AIC)[[l]],
-                    lapply(sadler_mod, AIC)[[l]]) |> which.min()
-  }
-
-  # which model is necessary? (most complex of all reagent lots)
-  mod_nb <- max(min_AIC)
-  best_mod <- mod_names[mod_nb]
-
-  # if user has selected a model
-  if(model != "lowest AIC"){
     final_mod <- model
 
-    # if this model does have the lowest AIC
-    if(best_mod == final_mod){
-      message(paste0("The ", best_mod, " model, selected by the user, has the best model fit as
-                     determined by AIC."))
-    # warning if this model does not have the lowest AIC
-    }else{
-      message(paste0("Warning: The ", best_mod, " model may have a better model fit
-                     than the selected model, as determined by AIC."))
+  # if user selected anything other than Sadler:
+  } else {
+
+    # linear
+    lin_mod <- lapply(lots_list, function(x) lm(sd_wl ~ avg, data = x))
+
+    # quadratic
+    quad_mod <- lapply(lots_list, function(x) lm(sd_wl ~ avg + I(avg^2), data = x))
+
+    mod_names <- c("linear", "quadratic")
+    all_mods <- list(lin_mod, quad_mod) |> setNames(mod_names)
+
+    # find model with lower AIC for each reagent lot
+    min_AIC <- vector()
+    for(l in 1:n_lots){
+      min_AIC[l] <- c(lapply(lin_mod, AIC)[[l]],
+                      lapply(quad_mod, AIC)[[l]]) |> which.min()
     }
 
-  # if user wants model with lowest AIC
-  }else{
-    final_mod <- best_mod
-    message(paste0("Selecting the ", best_mod, " model, which has the best model fit
-                   of the three choices as determined by AIC."))
+    # which model is necessary? (most complex of all reagent lots)
+    mod_nb <- max(min_AIC)
+    best_mod <- mod_names[mod_nb]
+
+    # if user has selected a specific model (not lowest AIC)
+    if(model != "lowest AIC"){
+      final_mod <- model
+
+      # if this model does have the lowest AIC
+      if(best_mod == final_mod){
+        message(paste0("The ", best_mod, " model, selected by the user, has the better model fit as
+                     determined by AIC."))
+      # warning if this model does not have the lowest AIC
+      }else{
+        message(paste0("Warning: The ", best_mod, " model may have a better model fit
+                     than the selected model, as determined by AIC."))
+      }
+
+    # if user wants model with lower AIC
+    }else{
+      final_mod <- best_mod
+      message(paste0("Selecting the ", best_mod, " model, which has a better model fit than the ",
+                     paste0(mod_names[mod_names != best_mod]),
+                     " model as determined by AIC."))
+    }
   }
+
 
   #----- plot precision profiles -----#
 
@@ -188,7 +175,14 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
        xlim = x_lims, ylim = y_lims, pch = 16)
   # and precision model
   new_vals <- seq(from = x_lims[1], to = x_lims[2], length = 20)
-  new_preds <- predict(all_mods[[final_mod]][[1]], new_vals |> as.data.frame() |> setNames("avg"))
+  # if Sadler
+  if(model == "Sadler"){
+    new_preds <- sadler(beta = sadler_mod[[1]]$par,
+                        data = as.data.frame(new_vals) |> setNames("avg"))
+  # otherwise
+  } else {
+    new_preds <- predict(all_mods[[final_mod]][[1]], new_vals |> as.data.frame() |> setNames("avg"))
+  }
   lines(new_vals, new_preds, col = 2, lty = 2)
 
   # plot remaining profiles (if any)
@@ -198,7 +192,15 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
       lot_l <- df[df$lot == l,]
       points(lot_l$avg, lot_l$sd_wl, col = pal[l], pch = 16)
       # and precision model
-      new_preds <- predict(all_mods[[final_mod]][[l]], new_vals |> as.data.frame() |> setNames("avg"))
+      # if Sadler
+      if(model == "Sadler"){
+        new_preds <- sadler(beta = sadler_mod[[l]]$par,
+                            data = as.data.frame(new_vals) |> setNames("avg"))
+      # otherwise
+      } else {
+        new_preds <- predict(all_mods[[final_mod]][[l]],
+                             new_vals |> as.data.frame() |> setNames("avg"))
+      }
       lines(new_vals, new_preds, col = pal[l], lty = 2)
     }
   }
@@ -227,13 +229,27 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB,
     K <- unique(lot_l$sample) |> length() # number of samples
     cp <- qnorm(pct) / (1 - (1/(4*(N_tot-K)) ))
 
-    init_LoD <- LoB + cp*predict(all_mods[[final_mod]][[l]],
-                                  newdata = LoB |> as.data.frame() |> setNames("avg"))
+    if(model == "Sadler"){
+      init_LoD <- LoB + cp*sadler(beta = sadler_mod[[l]]$par,
+                                  data = LoB |> as.data.frame() |> setNames("avg"))
+    } else {
+      init_LoD <- LoB + cp*predict(all_mods[[final_mod]][[l]],
+                                   newdata = LoB |> as.data.frame() |> setNames("avg"))
+    }
 
     # now calculate what we would get using different measurand concentrations (instead of 0.51, LoB)
     mc <- seq(from = LoB, to = init_LoD*2, by = .01)
-    trial_lod <- LoB + cp*predict(all_mods[[final_mod]][[l]],
-                             newdata = mc |> as.data.frame() |> setNames("avg"))
+
+
+    if(model == "Sadler"){
+      trial_lod <- LoB + cp*sadler(beta = sadler_mod[[l]]$par,
+                                  data = mc |> as.data.frame() |> setNames("avg"))
+    } else {
+      trial_lod <- LoB + cp*predict(all_mods[[final_mod]][[l]],
+                                    newdata = mc |> as.data.frame() |> setNames("avg"))
+    }
+
+
     bias <- mc - trial_lod
 
     # find measurand with bias closest to 0 and use those LoD values
