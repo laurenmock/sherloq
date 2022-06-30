@@ -11,6 +11,7 @@ LoD_probit(
   col_obs_pos,
   col_tot,
   LoB,
+  log10_trans = FALSE,
   beta = 0.05,
   always_sep_lots = FALSE
 )
@@ -26,8 +27,13 @@ LoD_probit(
 
 \item{col_tot}{Name (in quotes) of the column with the total number of results.}
 
-\item{LoB}{Limit of blank (LoB). Can be set to zero if it can be confirmed that LoB = 0, or
-calculated using the classical approch.}
+\item{LoB}{Limit of blank (LoB). If the false positives in each reagent lot do not exceed
+(100*alpha)\%, the LoB can be set to zero. Otherwise, calculate the LoB using the classical
+approach.}
+
+\item{log10_trans}{According to CLSI EP17 guidelines, a log 10 transformation of concentration
+values can lead to a better probit fit. A note will indicate if the model(s) with a log 10
+transformation of concentration values have a better fit.}
 
 \item{beta}{Type II error. Default is 0.05.}
 

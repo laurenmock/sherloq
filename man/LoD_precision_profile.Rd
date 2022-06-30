@@ -10,9 +10,10 @@ LoD_precision_profile(
   col_sample,
   col_avg,
   col_sd,
-  LoB,
+  LoB_val,
   N,
-  model = c("lowest AIC", "linear", "quadratic", "Sadler"),
+  model = c("lowest AIC", "linear", "quadratic", "sadler"),
+  sadler_start,
   beta = 0.05,
   always_sep_lots = FALSE
 )
@@ -29,15 +30,18 @@ from CLSI EP05) for each sample from each reagent lot.}
 
 \item{col_sd}{Name (in quotes) of the column with within-lab precision.}
 
-\item{LoB}{Limit of blank (LoB).}
+\item{LoB_val}{Limit of blank (LoB).}
 
 \item{N}{Total number of measurement values per sample per reagent lot (number of measurements
 per sample times number of sample). If all reagent lots are pooled, use the total number
 of measurement values per sample (sum across all lots).}
 
-\item{model}{Choice of precision model. Default is to choose the model with the lowest AIC.
-One can also select to use a linear, quadratic, or Sadler model, the three models most widely used
-in clinical literature (according to CLSI guidelines).}
+\item{model}{Choice of precision model. Default is to choose either the linear or quadratic model
+based on AIC. One can also select to use a linear, quadratic, or Sadler model, the three models
+most widely used in clinical literature (according to CLSI guidelines).}
+
+\item{sadler_start}{Vector of length 3 with starting coefficient values for the Sadler model,
+with the form (beta0 + beta1*x)^beta2.}
 
 \item{beta}{Type II error. Default is 0.05.}
 

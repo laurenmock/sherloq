@@ -68,7 +68,7 @@ LoB <- function(df, col_lot, col_sample, col_value,
   if(!all(complete.cases(df))){
     # remove rows with missing values (and give warning)
     df <- df[complete.cases(df),]
-    message("Warning: Ignoring rows with missing values.")
+    warning("Ignoring rows with missing values.")
   }
 
   # percentile
@@ -87,7 +87,7 @@ LoB <- function(df, col_lot, col_sample, col_value,
     # test to see if normally distributed
     shapiro_pval <- stats::shapiro.test(df$val)$p.value |> round(4)
     if(shapiro_pval <= 0.05){
-      message(paste0("Warning: These values do not appear to be normally distributed
+      warning(paste0("These values do not appear to be normally distributed
                      (Shapiro-Wilk test p-value = ", shapiro_pval,
                      "). Consider the non-parametric approach (recommended)."))
     }
@@ -138,7 +138,7 @@ LoB <- function(df, col_lot, col_sample, col_value,
 
   # warning about always_sep_lots when n_lots > 3
   if(always_sep_lots & length(LoB_vals) > 3){
-    message("Since there are at least four reagent lots in the data provided, CLSI guidelines
+    warning("Since there are at least four reagent lots in the data provided, CLSI guidelines
             recommend combining all reagent lots. Set `always_sep_lots` = FALSE to obtain a single,
             reportable estimate of LoB.")
   # if only one LoB value, report as LoB_reported (not LoB_lot_1)

@@ -47,7 +47,7 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
   if(!all(complete.cases(df))){
     # remove rows with missing values (and give warning)
     df <- df[complete.cases(df),]
-    message("Warning: Ignoring rows with missing values.")
+    warning("Ignoring rows with missing values.")
   }
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
@@ -91,7 +91,7 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
     # test to see if normally distributed
     shapiro_pval <- shapiro.test(df$val)$p.value |> round(4)
     if(shapiro_pval <= 0.05){
-      message(paste0("Warning: These values do not appear to be normally distributed (Shapiro-Wilk test p-value = ", shapiro_pval,
+      warning(paste0("These values do not appear to be normally distributed (Shapiro-Wilk test p-value = ", shapiro_pval,
                      "). Consider a mathematical transformation or a different approach."))
     }
 
@@ -115,7 +115,7 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
 
   # warning about always_sep_lots when n_lots > 3
   if(always_sep_lots & length(LoD_vals) > 3){
-    message("Since there are at least four reagent lots in the data provided, CLSI guidelines
+    warning("Since there are at least four reagent lots in the data provided, CLSI guidelines
             recommend combining all reagent lots. Set `always_sep_lots` = FALSE to obtain a single,
             reportable estimate of LoD.")
     # if only one LoD value, report as LoB_reported (not LoD_lot_1)

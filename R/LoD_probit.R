@@ -27,7 +27,7 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
   if(!all(complete.cases(df))){
     # remove rows with missing values (and give warning)
     df <- df[complete.cases(df),]
-    message("Warning: Ignoring rows with missing values.")
+    warning("Ignoring rows with missing values.")
   }
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
@@ -49,14 +49,10 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
   names(df)[names(df) == col_tot] <- "tot"
 
   # confirm that all columns are numeric and positive
-  stopifnot("`col_lot` must be numeric" =
-              (is.numeric(df$lot) & all(df$lot >= 0)))
-  stopifnot("`col_conc` must be numeric" =
-              is.numeric(df$conc)) & all(df$conc >= 0)
-  stopifnot("`col_obs_pos` must be numeric" =
-              is.numeric(df$obs_pos)) & all(df$obs_pos >= 0)
-  stopifnot("`col_tot` must be numeric" =
-              (is.numeric(df$tot) & all(df$tot >= 0)))
+  stopifnot("`col_lot` must be numeric" = (is.numeric(df$lot) & all(df$lot >= 0)))
+  stopifnot("`col_conc` must be numeric" = is.numeric(df$conc)) & all(df$conc >= 0)
+  stopifnot("`col_obs_pos` must be numeric" = is.numeric(df$obs_pos)) & all(df$obs_pos >= 0)
+  stopifnot("`col_tot` must be numeric" = (is.numeric(df$tot) & all(df$tot >= 0)))
 
   # percentile
   pct <- 1 - beta
@@ -79,27 +75,57 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
   # log transform concentration vals
   df$conc_log10 <- df$conc |> log10()
 
-  # loop through each reagent lot
   LoD_vals <- list()
   AIC_glm <- vector()
   AIC_glm_log10 <- vector()
   chisq_p_val <- vector()
-  chisq_p_val_log10 <- vector()
+
   plot.new()
   par(mfrow = c(1, n_lots),
       mar = c(3, 3, 2, 1),
       mgp = c(2, 0.5, 0),
       tck = -.01)
+
+  # loop through each reagent lot
   for(l in 1:n_lots){
 
     # look at each lot separately
     lot_l <- df[df$lot == l,]
 
-    # fit GLMs with concentration and log10 concentrations
-    mod_glm <- glm(cbind(obs_pos, tot - obs_pos) ~ conc, data = lot_l,
-                   family = binomial(link = "probit"))
-    mod_glm_log10 <- glm(cbind(obs_pos, tot - obs_pos) ~ conc_log10, data = lot_l,
-                   family = binomial(link = "probit"))
+    # function to hide unnecessary GLM warning
+    hide_warning <- function(w){
+      if((any(grepl("fitted probabilities numerically 0 or 1 occurred", w)))){
+        invokeRestart("muffleWarning")}
+    }
+
+
+
+
+    # fit GLMs with 1) concentrations and 2) log10 concentrations
+
+    tryCatch(
+
+      expr = {
+
+        mod_glm <- withCallingHandlers(glm(cbind(obs_pos, tot - obs_pos) ~ conc,
+                                           data = lot_l,
+                                           family = binomial(link = "probit")),
+                                       warning = hide_warning)
+        mod_glm_log10 <- withCallingHandlers(glm(cbind(obs_pos, tot - obs_pos) ~ conc_log10,
+                                                 data = lot_l,
+                                                 family = binomial(link = "probit")),
+                                             warning = hide_warning)
+
+      },
+
+      warning = function(w){
+        warning("Original error message: ", w,
+        "The GLM algorithm did not converge for lot ", l,
+        ", likely because most hit rates
+        are very close to 0 or 1. More measurements are needed in the range of
+        concentration values for which the hit rate is between 0 and 1.")
+      }
+    )
 
     # get model AIC
     AIC_glm[l] <- AIC(mod_glm)
@@ -121,7 +147,7 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
 
     # if log transformed
     if(log10_trans){
-      new_vals <- seq(-8, 0, by = 0.0001) # possible log conc. values
+      new_vals <- seq(log(0.0001), log(1), by = 0.001) # possible log conc. values
       pred_df <- predict(mod,
                          newdata = data.frame("conc_log10" = new_vals),
                          se.fit = TRUE)[1:2] |> as.data.frame()
@@ -136,6 +162,7 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
       pred_df$conc <- new_vals
     }
 
+    # use inverse link to get predicted probabilities and 95% CI
     pred_df$p_hat <- inverse_link(pred_df$fit)
     pred_df$lwr <- inverse_link(pred_df$fit - 1.96*pred_df$se.fit)
     pred_df$upr <- inverse_link(pred_df$fit + 1.96*pred_df$se.fit)
@@ -144,7 +171,7 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
     with(lot_l,
          plot(conc, hit_rate, type = "p", log = "x", pch = 16,
               main = paste0("Reagent Lot ", l),
-              xlab = "Concentration",
+              xlab = "Concentration (log scale)",
               ylab = "Hit Rate",
               ylim = c(0,1)))
     lines(pred_df$conc,
@@ -158,7 +185,7 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
           type="l", col="black")
     abline(h = pct, col = 'red', lty = 2)
 
-    # find first probability over pct (usually 95%) and set as LoD
+    # find first predicted probability greater than pct (usually 95%) and set as LoD
     LoD_vals[l] <- pred_df[pred_df$p_hat >= pct,]$conc[1]
     names(LoD_vals)[l] <- paste0("LoD_lot_", l)
 
@@ -172,14 +199,13 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
 
   # message for user
   if(!log10_trans & log10_better){
-    message("The probit models have a better fit if a log transformation of the concentration values
-            is performed. Consider setting `log10_trans` = TRUE.")
+    warning("The probit models have a better fit on at least one reagent lot if a log transformation
+    of the concentration values is performed. Consider setting `log10_trans` = TRUE.")
   }
-
 
   # warning about always_sep_lots when n_lots > 3
   if(always_sep_lots & length(LoD_vals) > 3){
-    message("Since there are at least four reagent lots in the data provided, CLSI guidelines
+    warning("Since there are at least four reagent lots in the data provided, CLSI guidelines
             recommend combining all reagent lots. Set `always_sep_lots` = FALSE to obtain a single,
             reportable estimate of LoD.")
   # if only one LoD value, report as LoB_reported (not LoD_lot_1)
@@ -191,14 +217,9 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
     names(LoD_vals)[n_lots + 1] <- "LoD_reported"
   }
 
-  message("Note: If there is a warning indicating that the `glm` function did not converge,
-          it's likely that most predicted probabilities are exactly 0 or exactly 1. In this case,
-          more measurements are needed in the range of concentration values for which the predicted
-          probabilities are between 0 and 1.")
-
   # warning about GOF
   if(any(chisq_p_val < 0.05)){
-    message("Warning: Pearson chi-square goodness-of-fit tests indicate that the probit model fit
+    warning("Pearson chi-square goodness-of-fit tests indicate that the probit model fit
             may be insufficient for at least one reagent lot (p-values: ",
             paste(round(chisq_p_val,3), collapse = ", "), ").")
   }
