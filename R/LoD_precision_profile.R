@@ -33,7 +33,7 @@
 #'
 #' sample_df <- data.frame(reagent_lot, sample, avg, sd_wl)
 #'
-#' LoD(sample_df, col_lot = "reagent_lot", col_sample = "sample", col_avg = "avg",
+#' LoD(df = sample_df, col_lot = "reagent_lot", col_sample = "sample", col_avg = "avg",
 #' col_sd = "sd_wl", LoB = 0.51, N = 80*6)
 #'
 #' @export
@@ -53,8 +53,7 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB_
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
-    col_lot <- "lot_number"
-    df[[col_lot]] <- 1
+    df$lot <- 1
   }
 
   # confirm that column names exist in df
@@ -74,8 +73,6 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB_
   stopifnot("`col_sd` must be numeric" = (is.numeric(df$sd_wl) & all(df$sd_wl >= 0)))
 
   # if model is sadler, check sadler_start for starting values
-
-
   if(model == "sadler"){
     stopifnot("`sadler_start` requires a vector with three values (one for each coefficient
               in the Sadler model)" = length(sadler_start) == 3)
@@ -116,13 +113,11 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB_
       expr = {
 
         sadler_mod <- lapply(lots_list, function(x) nls(sd_wl ~ I((c0 + c1*avg)^c2), data = x,
-                                          start = list(c0 = 0.2, c1 = 0.1, c2 = 1),
-                                          #start = list(c0 = -0.9, c1 = 0.2, c2 = 1),
-                                          # start = list(c0 = sadler_start[1],
-                                          #              c1 = sadler_start[2],
-                                          #              c2 = sadler_start[3]),
+                                          #start = list(c0 = 0.2, c1 = 0.1, c2 = 1),
+                                          start = list(c0 = sadler_start[1],
+                                                       c1 = sadler_start[2],
+                                                       c2 = sadler_start[3]),
                                           control = nls.control(maxiter = 1000)))
-        # CHANGE TO USER INPUTTING STARTING VALUES
         mod_names[3] <- "sadler"
         all_mods[[3]] <- sadler_mod
         names(all_mods) <- mod_names
@@ -179,6 +174,12 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB_
     final_mod <- best_mod
     message(paste0("Selecting the ", best_mod, " model, which has a better model fit than the ",
                    mod_names[mod_names != best_mod], " model, as determined by AIC."))
+  }
+
+  # get model coefficients to report
+  mod_coeff <- lapply(all_mods[[final_mod]], function(x) summary(x)$coef[,1])
+  for(l in 1:n_lots){
+    names(mod_coeff)[l] <- paste0("lot_", l)
   }
 
 
@@ -276,8 +277,8 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd, LoB_
     names(LoD_vals)[n_lots + 1] <- "LoD_reported"
   }
 
-  output <- list(LoD_vals, mod_plot)
-  names(output) <- c("LoD_values", "precision_model_plot")
+  output <- list(LoD_vals, mod_coeff, mod_plot)
+  names(output) <- c("LoD_values", "model_coeff", "mod_plot")
 
   return(output)
 }

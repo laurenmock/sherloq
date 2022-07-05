@@ -65,7 +65,7 @@ sd_wl <- c(.39, .39, .46, .55, .64, 1.12, .29, .54, .55, .63, .82, 1.38)
 
 sample_df <- data.frame(reagent_lot, sample, avg, sd_wl)
 
-LoD(sample_df, col_lot = "reagent_lot", col_sample = "sample", col_avg = "avg",
+LoD(df = sample_df, col_lot = "reagent_lot", col_sample = "sample", col_avg = "avg",
 col_sd = "sd_wl", LoB = 0.51, N = 80*6)
 
 }

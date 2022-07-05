@@ -18,7 +18,22 @@
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
 #'
+#' @return Returns the limit of detection (LoD) value as calculated with the probit approach.
+#'
+#' @examples
+#' conc <- rep(c(0, .006, .014, .025, .05, .15, .3, .5)
+#' reagent_lot <- rep(c(1, 2, 3), times = 8)
+#' obs_pos <- c(0, 0, 0, 11, 12, 22, 15, 22, 31, 23, 28, 27, 29,
+#' 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32)
+#' tot <- c(22, 22, 22,30, 30, 34, 30, 30, 34, rep(32, 15))
+#'
+#' probit_df <- data.frame(conc, lot, obs_pos, tot)
+#'
+#' LoD_probit(df = probit_df, col_lot = "reagent_lot", col_conc = "conc", col_obs_pos = "obs_pos",
+#' col_tot = "tot", LoB = 0)
+#'
 #' @export
+
 
 LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
                        log10_trans = FALSE, beta = 0.05, always_sep_lots = FALSE){
@@ -32,8 +47,7 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
-    col_lot <- "lot_number"
-    df[[col_lot]] <- 1
+    df$lot <- 1
   }
 
   # confirm that column names exist in df
@@ -76,9 +90,12 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
   df$conc_log10 <- df$conc |> log10()
 
   LoD_vals <- list()
+  mod <- list()
+  mod_coeff <- list()
   AIC_glm <- vector()
   AIC_glm_log10 <- vector()
   chisq_p_val <- vector()
+
 
   plot.new()
   par(mfrow = c(1, n_lots),
@@ -99,8 +116,6 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
     }
 
 
-
-
     # fit GLMs with 1) concentrations and 2) log10 concentrations
 
     tryCatch(
@@ -115,11 +130,10 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
                                                  data = lot_l,
                                                  family = binomial(link = "probit")),
                                              warning = hide_warning)
-
       },
 
       warning = function(w){
-        warning("Original error message: ", w,
+        stop("Original error message: ", w,
         "The GLM algorithm did not converge for lot ", l,
         ", likely because most hit rates
         are very close to 0 or 1. More measurements are needed in the range of
@@ -133,22 +147,26 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
 
     # select model based on user input
     if(log10_trans){
-      mod <- mod_glm_log10
+      mod[[l]] <- mod_glm_log10
     }else{
-      mod <- mod_glm
+      mod[[l]] <- mod_glm
     }
 
+    # get model coefficients
+    mod_coeff[[l]] <- summary(mod[[l]])$coef[,1]
+    names(mod_coeff)[l] <- paste0("lot_", l)
+
     # check model fit with deviance
-    chisq_stat <- sum(residuals(mod, type = "pearson")^2)
-    chisq_p_val[l] <- 1 - pchisq(chisq_stat, df = mod$df.residual)
+    chisq_stat <- sum(residuals(mod[[l]], type = "pearson")^2)
+    chisq_p_val[l] <- 1 - pchisq(chisq_stat, df = mod[[l]]$df.residual)
 
     # use probit inverse to get predicted probabilities and CIs for a range of concentrations
-    inverse_link <- family(mod)$linkinv
+    inverse_link <- family(mod[[l]])$linkinv
 
     # if log transformed
     if(log10_trans){
       new_vals <- seq(log(0.0001), log(1), by = 0.001) # possible log conc. values
-      pred_df <- predict(mod,
+      pred_df <- predict(mod[[l]],
                          newdata = data.frame("conc_log10" = new_vals),
                          se.fit = TRUE)[1:2] |> as.data.frame()
       pred_df$conc <- 10^(new_vals)
@@ -156,7 +174,7 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
     # if not log transformed
     }else{
       new_vals <- seq(0, 1, by = 0.0001) # possible conc. values
-      pred_df <- predict(mod,
+      pred_df <- predict(mod[[l]],
                          newdata = data.frame("conc" = new_vals),
                          se.fit = TRUE)[1:2] |> as.data.frame()
       pred_df$conc <- new_vals
@@ -224,8 +242,8 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
             paste(round(chisq_p_val,3), collapse = ", "), ").")
   }
 
-  output <- list(LoD_vals, hit_rate_plot)
-  names(output) <- c("LoD_values", "hit_rate_plot")
+  output <- list(LoD_vals, mod_coeff, hit_rate_plot)
+  names(output) <- c("LoD_values", "mod_coeff", "hit_rate_plot")
 
   return(output)
 }

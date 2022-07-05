@@ -42,6 +42,22 @@ transformation of concentration values have a better fit.}
 If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 Default is FALSE.}
 }
+\value{
+Returns the limit of detection (LoD) value as calculated with the probit approach.
+}
 \description{
 Limit of Detection (LoD) Calculation--Probit Approach
+}
+\examples{
+conc <- rep(c(0, .006, .014, .025, .05, .15, .3, .5)
+reagent_lot <- rep(c(1, 2, 3), times = 8)
+obs_pos <- c(0, 0, 0, 11, 12, 22, 15, 22, 31, 23, 28, 27, 29,
+32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32)
+tot <- c(22, 22, 22,30, 30, 34, 30, 30, 34, rep(32, 15))
+
+probit_df <- data.frame(conc, lot, obs_pos, tot)
+
+LoD_probit(df = probit_df, col_lot = "reagent_lot", col_conc = "conc", col_obs_pos = "obs_pos",
+col_tot = "tot", LoB = 0)
+
 }

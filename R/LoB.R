@@ -45,6 +45,13 @@
 LoB <- function(df, col_lot, col_sample, col_value,
                 parametric = FALSE, alpha = 0.05, always_sep_lots = FALSE){
 
+  # check for missing data
+  if(!all(complete.cases(df))){
+    # remove rows with missing values (and give warning)
+    df <- df[complete.cases(df),]
+    warning("Ignoring rows with missing values.")
+  }
+
   # confirm that column names exist in df
   stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
   stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
@@ -60,7 +67,6 @@ LoB <- function(df, col_lot, col_sample, col_value,
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
-    col_lot <- "lot_number"
     df$lot <- 1
   }
 

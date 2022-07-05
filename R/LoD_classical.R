@@ -52,8 +52,7 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
-    col_lot <- "lot_number"
-    df[[col_lot]] <- 1
+    df$lot <- 1
   }
 
   # confirm that column names exist in df
