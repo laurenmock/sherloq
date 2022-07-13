@@ -1,6 +1,15 @@
 
 #' Limit of Detection (LoD) Calculation--Classical Approach
 #'
+#' When should I use the classical approach to calculate LoD?
+#'
+#' From CLSI EP17 guidelines:
+#' This is the original approach from the previous version of this document, which has been
+#' widely used for many chemistry and immunochemical measurement procedures. It uses
+#' measurements made on...a set of low level samples containing a measurand targeted
+#' around the assumed LoD... An underlying assumption is that variability of measurement
+#' results is reasonably consistent across the low level samples.
+#'
 #' @param df A data frame with low-level samples.
 #' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).
 #' @param col_sample Name (in quotes) of the column with sample number.
@@ -12,15 +21,16 @@
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
 #'
-#' @return Returns the limit of detection (LoD) value as calculated with the classical
+#' @return Returns a list with the limit of detection (LoD) value as calculated with the classical
 #' parametric approach.
 #'
 #' @examples
+#' # CLSI EP17 Appendix A
 #' reagent_lot <- c(rep(1, 12*5), rep(2, 12*5))
 #' day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
 #' sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
 #' replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
-#' pg.ml <- c(21.0, 22.8, 28.2, 25.9, 26.4, 28.3, 20.7, 21.9,
+#' measure <- c(21.0, 22.8, 28.2, 25.9, 26.4, 28.3, 20.7, 21.9,
 #'             24.7, 22.5, 28.5, 29.2, 13.3, 12.6, 18.2, 14.7,
 #'             17.8, 14.0, 14.1, 12.5, 11.3, 12.2, 16.2, 13.9,
 #'             12.8, 12.9, 17.4, 16.0, 15.9, 14.1, 11.3, 9.4,
@@ -34,19 +44,22 @@
 #'             13.4, 8.5, 16.3, 18.1, 12.4, 11.1, 11.3, 10.1,
 #'             18.8, 17.6, 14.1, 14.9, 19.2, 15.8, 19.8, 21.4,
 #'             18.0, 18.0, 19.6, 23.1, 32.9, 30.4, 29.4, 27.6,
-#'             27.7, 30.6, 31.4, 30.4, 32.5, 28.9, 29.8, 35.1))
-#' lowlvl_df <- data.frame(reagent_lot, day, sample, replicate, pg.ml)
+#'             27.7, 30.6, 31.4, 30.4, 32.5, 28.9, 29.8, 35.1)
 #'
-#' LoD(lowlvl_df, col_lot = "reagent_lot", col_value = "pg.ml", LoB = ??)
+#' LoD_C_df <- data.frame(reagent_lot, day, sample, replicate, measure)
+#'
+#' LoD_classical(df = LoD_C_df, col_lot = "reagent_lot", col_sample = "sample",
+#' col_value = "measure", LoB = 7.5)
 #'
 #' @export
 
-LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, always_sep_lots = FALSE){
+LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05,
+                          always_sep_lots = FALSE){
 
   # check for missing data
-  if(!all(complete.cases(df))){
+  if(!all(stats::complete.cases(df))){
     # remove rows with missing values (and give warning)
-    df <- df[complete.cases(df),]
+    df <- df[stats::complete.cases(df),]
     warning("Ignoring rows with missing values.")
   }
 
@@ -65,7 +78,9 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
   names(df)[names(df) == col_sample] <- "sample"
   names(df)[names(df) == col_value] <- "val"
 
-  # confirm that col_value is numeric
+  # confirm that columns are numeric
+  stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
+  stopifnot("`col_sample` must be numeric" = is.numeric(df$sample))
   stopifnot("`col_value` must be numeric" = is.numeric(df$val))
 
   # percentile
@@ -88,16 +103,18 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
     lot_l <- df[df$lot == l,]
 
     # test to see if normally distributed
-    shapiro_pval <- shapiro.test(df$val)$p.value |> round(4)
+    shapiro_pval <- stats::shapiro.test(df$val)$p.value |> round(4)
     if(shapiro_pval <= 0.05){
-      warning(paste0("These values do not appear to be normally distributed (Shapiro-Wilk test p-value = ", shapiro_pval,
+      warning(paste0("These values do not appear to be normally distributed (Shapiro-Wilk test
+                     p-value = ", shapiro_pval,
                      "). Consider a mathematical transformation or a different approach."))
     }
 
     # standard deviation for each sample in each reagent lot
-    sd_sample_df <- do.call(data.frame, aggregate(lot_l$val ~ lot_l$sample, data = lot_l,
-                                                  FUN = function(x) c(sd = sd(x), n = length(x)))) |>
-      setNames(c("sample", "val_sd", "val_n"))
+    sd_sample_df <- do.call(data.frame, stats::aggregate(lot_l$val ~ lot_l$sample, data = lot_l,
+                                                  FUN = function(x) c(sd = stats::sd(x),
+                                                                      n = length(x)))) |>
+      stats::setNames(c("sample", "val_sd", "val_n"))
 
     # pooled standard deviation
     sd_L <- with(sd_sample_df, sqrt( ((val_n-1) %*% val_sd^2) / sum(val_n-1)) )
@@ -105,11 +122,11 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
     # critical value
     L <- nrow(lot_l) # number of results
     J <- unique(lot_l$sample) |> length() # number of samples
-    cp <- qnorm(pct) / (1 - (1/(4*(L-J)) ))
+    cp <- stats::qnorm(pct) / (1 - (1/(4*(L-J)) ))
 
     # calculate LoD
     LoD_vals[l] <- LoB + cp*sd_L
-    names(LoD_vals)[l] <- paste0("LoD_lot_", l)
+    names(LoD_vals)[l] <- paste0("lot_", l)
   }
 
   # warning about always_sep_lots when n_lots > 3
@@ -117,13 +134,13 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05, 
     warning("Since there are at least four reagent lots in the data provided, CLSI guidelines
             recommend combining all reagent lots. Set `always_sep_lots` = FALSE to obtain a single,
             reportable estimate of LoD.")
-    # if only one LoD value, report as LoB_reported (not LoD_lot_1)
+    # if only one LoD value, report as LoD_reported (not LoD_lot_1)
   }else if(length(LoD_vals) == 1){
-    names(LoD_vals)[1] <- "LoD_reported"
+    names(LoD_vals)[1] <- "reported"
     # otherwise find max LoD to report
   }else{
     LoD_vals[n_lots + 1] <- unlist(LoD_vals) |> max()
-    names(LoD_vals)[n_lots + 1] <- "LoD_reported"
+    names(LoD_vals)[n_lots + 1] <- "reported"
   }
 
   return(LoD_vals)

@@ -32,8 +32,8 @@ LoD_probit(
 approach.}
 
 \item{log10_trans}{According to CLSI EP17 guidelines, a log 10 transformation of concentration
-values can lead to a better probit fit. A note will indicate if the model(s) with a log 10
-transformation of concentration values have a better fit.}
+values can lead to a better probit fit. If FALSE, a note will indicate if the model(s) with a log
+10 transformation of concentration values have a better fit.}
 
 \item{beta}{Type II error. Default is 0.05.}
 
@@ -43,21 +43,23 @@ If TRUE, all reagent lots are evaluated separately regardless of the number of l
 Default is FALSE.}
 }
 \value{
-Returns the limit of detection (LoD) value as calculated with the probit approach.
+Returns a list with the limit of detection (LoD) value as calculated with the probit
+approach, probit model coefficients, probit model fitted values and confidence intervals, and
+probit model plot.
 }
 \description{
 Limit of Detection (LoD) Calculation--Probit Approach
 }
 \examples{
-conc <- rep(c(0, .006, .014, .025, .05, .15, .3, .5)
+conc <- rep(c(0, .006, .014, .025, .05, .15, .3, .5), each = 3)
 reagent_lot <- rep(c(1, 2, 3), times = 8)
-obs_pos <- c(0, 0, 0, 11, 12, 22, 15, 22, 31, 23, 28, 27, 29,
+obs_positive <- c(0, 0, 0, 11, 12, 22, 15, 22, 31, 23, 28, 27, 29,
 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32)
-tot <- c(22, 22, 22,30, 30, 34, 30, 30, 34, rep(32, 15))
+total_calls <- c(22, 22, 22,30, 30, 34, 30, 30, 34, rep(32, 15))
 
-probit_df <- data.frame(conc, lot, obs_pos, tot)
+LoD_P_df <- data.frame(conc, reagent_lot, obs_positive, total_calls)
 
-LoD_probit(df = probit_df, col_lot = "reagent_lot", col_conc = "conc", col_obs_pos = "obs_pos",
-col_tot = "tot", LoB = 0)
+LoD_probit(df = LoD_P_df, col_lot = "reagent_lot", col_conc = "conc",
+col_obs_pos = "obs_positive", col_tot = "total_calls", LoB = 0)
 
 }

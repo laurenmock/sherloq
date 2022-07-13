@@ -33,18 +33,19 @@ If TRUE, all reagent lots are evaluated separately regardless of the number of l
 Default is FALSE.}
 }
 \value{
-Returns the limit of detection (LoD) value as calculated with the classical
+Returns a list with the limit of detection (LoD) value as calculated with the classical
 parametric approach.
 }
 \description{
 Limit of Detection (LoD) Calculation--Classical Approach
 }
 \examples{
+# CLSI EP17 Appendix A
 reagent_lot <- c(rep(1, 12*5), rep(2, 12*5))
 day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
 sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
 replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
-pg.ml <- c(21.0, 22.8, 28.2, 25.9, 26.4, 28.3, 20.7, 21.9,
+measure <- c(21.0, 22.8, 28.2, 25.9, 26.4, 28.3, 20.7, 21.9,
             24.7, 22.5, 28.5, 29.2, 13.3, 12.6, 18.2, 14.7,
             17.8, 14.0, 14.1, 12.5, 11.3, 12.2, 16.2, 13.9,
             12.8, 12.9, 17.4, 16.0, 15.9, 14.1, 11.3, 9.4,
@@ -58,9 +59,11 @@ pg.ml <- c(21.0, 22.8, 28.2, 25.9, 26.4, 28.3, 20.7, 21.9,
             13.4, 8.5, 16.3, 18.1, 12.4, 11.1, 11.3, 10.1,
             18.8, 17.6, 14.1, 14.9, 19.2, 15.8, 19.8, 21.4,
             18.0, 18.0, 19.6, 23.1, 32.9, 30.4, 29.4, 27.6,
-            27.7, 30.6, 31.4, 30.4, 32.5, 28.9, 29.8, 35.1))
-lowlvl_df <- data.frame(reagent_lot, day, sample, replicate, pg.ml)
+            27.7, 30.6, 31.4, 30.4, 32.5, 28.9, 29.8, 35.1)
 
-LoD(lowlvl_df, col_lot = "reagent_lot", col_value = "pg.ml", LoB = ??)
+LoD_C_df <- data.frame(reagent_lot, day, sample, replicate, measure)
+
+LoD_classical(df = LoD_C_df, col_lot = "reagent_lot", col_sample = "sample",
+col_value = "measure", LoB = 7.5)
 
 }

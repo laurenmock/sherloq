@@ -34,17 +34,19 @@ If TRUE, all reagent lots are evaluated separately regardless of the number of l
 Default is FALSE.}
 }
 \value{
-Returns the limit of blank (LoB) value.
+Returns a list with the limit of blank (LoB) value and a histogram (if using the
+non-parametric approach).
 }
 \description{
 Limit of Blank (LoB) Calculation
 }
 \examples{
+# CLSI EP17 Appendix A
 reagent_lot <- c(rep(1, 12*5), rep(2, 12*5))
 day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
 sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
 replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
-pg.ml <- c(2.6, -.8, 5.5, 6.0, 4.5, .6, -2.3, 3.4,
+measure <- c(2.6, -.8, 5.5, 6.0, 4.5, .6, -2.3, 3.4,
             5.9, 7.6, 4.1, -1.4, 1.0, 2.9, 4.9, 8.0,
             6.9, 5.0, 3.4, 1.2, 6.5, 5.6, -2.2, 2.3,
             -4.4, -3.4, 7.0, 6.9, 4.3, 3.2, -1.4, 4.2,
@@ -59,9 +61,10 @@ pg.ml <- c(2.6, -.8, 5.5, 6.0, 4.5, .6, -2.3, 3.4,
             4.0, 11.5, 4.5, 3.6, 4.4, 6.8, 7.1, 4.2,
             3.7, 3.7, 5.3, 4.5, 4.0, 6.2, -.2, 2.3,
             1.6, 2.6, 6.4, 5.7, 4.2, 3.7, 1.4, 1.5)
-blank_df <- data.frame(reagent_lot, day, sample, replicate, pg.ml)
 
-LoB_vals <- LoB(blank_df, col_lot = "reagent_lot", col_sample = "sample", col_value = "pg.ml")
+LoB_df <- data.frame(reagent_lot, day, sample, replicate, measure)
 
+results <- LoB(df = LoB_df, col_lot = "reagent_lot", col_sample = "sample",
+col_value = "measure")
 
 }

@@ -2,15 +2,16 @@
 % Please edit documentation in R/LoQ_functional.R
 \name{LoQ_functional}
 \alias{LoQ_functional}
-\title{Limit of Quantitation (LoQ) Calculation}
+\title{Limit of Quantitation (LoQ) Calculation with the Functional Sensitivity Approach}
 \usage{
 LoQ_functional(
   df,
   col_lot,
   col_sample,
   col_avg,
-  col_sd,
+  col_sd_wl,
   target_cv,
+  model = c("power", "power w intercept"),
   coeff_start,
   always_sep_lots = FALSE
 )
@@ -24,12 +25,15 @@ LoQ_functional(
 
 \item{col_avg}{Name (in quotes) of the column with measurements.}
 
-\item{col_sd}{Name (in quotes) of the column with within-lab precision.}
+\item{col_sd_wl}{Name (in quotes) of the column with within-lab precision.}
 
 \item{target_cv}{Desired coefficient of variation (sd/mean)*100.}
 
-\item{coeff_start}{Vector of length 2 with starting coefficient values for the power function model,
-with the form beta0*(x^beta1).}
+\item{model}{Select the power function (default) or power function with intercept to model
+coefficient of variation (CV) as a function of measurement value.}
+
+\item{coeff_start}{Vector with starting coefficient values for the selected model. Should have
+length 2 for the power function, or length 3 for the power function with intercept.}
 
 \item{always_sep_lots}{If FALSE, reagent lots are evaluated according to CLSI guidelines
 (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
@@ -41,19 +45,20 @@ Returns the limit of quantitation (LoQ) value, model coefficients, and plot with
 values from the model.
 }
 \description{
-Limit of Quantitation (LoQ) Calculation
+Limit of Quantitation (LoQ) Calculation with the Functional Sensitivity Approach
 }
 \examples{
-lot <- rep(c(1, 2), each = 9)
+reagent_lot <- rep(c(1, 2), each = 9)
 sample <- rep(1:9, times = 2)
 avg <- c(.04, .053, .08, .111, .137, .164, .190, .214, .245,
 .041, .047, .077, .106, .136, .159, .182, .205, .234)
 sd_wl <- c(.016, .016, .016, .017, .014, .012, .011, .016, .013,
 .018, .014, .012, .019, .016, .015, .015, .016, .014)
 
-loq_df <- data.frame(lot, sample, avg, sd_wl)
+LoQ_F_df <- data.frame(reagent_lot, sample, avg, sd_wl)
 
-LoQ_functional(loq_df, "lot", "sample", "avg", "sd_wl", target_cv = 10,
-coeff_start = c(0.5, -1), always)
+LoQ_functional(df = LoQ_F_df, col_lot = "reagent_lot", col_sample = "sample",
+col_avg = "avg", col_sd_wl = "sd_wl", target_cv = 10, model = "power",
+coeff_start = c(0,0))
 
 }
