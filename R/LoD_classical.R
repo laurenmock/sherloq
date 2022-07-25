@@ -10,9 +10,11 @@
 #' around the assumed LoD... An underlying assumption is that variability of measurement
 #' results is reasonably consistent across the low level samples.
 #'
-#' @param df A data frame with low-level samples.
-#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).
-#' @param col_sample Name (in quotes) of the column with sample number.
+#' @param df A data frame with low-level samples. Must have at least one column with sample
+#' and one column with measurement values. Column for reagent lot is optional.
+#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+#' @param col_sample Name (in quotes) of any column with unique values that correspond to each
+#' sample. Does not need to be numeric.
 #' @param col_value Name (in quotes) of the column with measurements.
 #' @param LoB Limit of blank (LoB). This value should be the same for all reagent lots.
 #' @param beta Type II error. Default is 0.05.
@@ -21,16 +23,16 @@
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
 #'
-#' @return Returns a list with the limit of detection (LoD) value as calculated with the classical
-#' parametric approach.
+#' @return Returns a list with the limit of detection (LoD) value(s) for each reagent lot
+#' (if evaluated separately) and the overall reported LoD.
 #'
 #' @examples
 #' # CLSI EP17 Appendix A
-#' reagent_lot <- c(rep(1, 12*5), rep(2, 12*5))
-#' day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
-#' sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
-#' replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
-#' measure <- c(21.0, 22.8, 28.2, 25.9, 26.4, 28.3, 20.7, 21.9,
+#' Reagent <- c(rep(1, 12*5), rep(2, 12*5))
+#' Day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
+#' Sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
+#' Replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
+#' Measurement <- c(21.0, 22.8, 28.2, 25.9, 26.4, 28.3, 20.7, 21.9,
 #'             24.7, 22.5, 28.5, 29.2, 13.3, 12.6, 18.2, 14.7,
 #'             17.8, 14.0, 14.1, 12.5, 11.3, 12.2, 16.2, 13.9,
 #'             12.8, 12.9, 17.4, 16.0, 15.9, 14.1, 11.3, 9.4,
@@ -46,14 +48,17 @@
 #'             18.0, 18.0, 19.6, 23.1, 32.9, 30.4, 29.4, 27.6,
 #'             27.7, 30.6, 31.4, 30.4, 32.5, 28.9, 29.8, 35.1)
 #'
-#' LoD_C_df <- data.frame(reagent_lot, day, sample, replicate, measure)
+#' LoD_C_df <- data.frame(Reagent, Day, Sample, Replicate, Measurement)
 #'
-#' LoD_classical(df = LoD_C_df, col_lot = "reagent_lot", col_sample = "sample",
-#' col_value = "measure", LoB = 7.5)
+#' results <- LoD_classical(df = LoD_C_df,
+#'                          col_lot = "Reagent",
+#'                          col_sample = "Sample",
+#'                          col_value = "Measurement",
+#'                          LoB = 7.5)
 #'
 #' @export
 
-LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05,
+LoD_classical <- function(df, col_lot = NULL, col_sample, col_value, LoB, beta = 0.05,
                           always_sep_lots = FALSE){
 
   # check for missing data
@@ -73,14 +78,15 @@ LoD_classical <- function(df, col_lot, col_sample, col_value, LoB, beta = 0.05,
   stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
   stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
 
+  # make a new column for sample
+  df$sample <- df[[col_sample]]
+
   # rename columns in df
   names(df)[names(df) == col_lot] <- "lot"
-  names(df)[names(df) == col_sample] <- "sample"
   names(df)[names(df) == col_value] <- "val"
 
   # confirm that columns are numeric
   stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
-  stopifnot("`col_sample` must be numeric" = is.numeric(df$sample))
   stopifnot("`col_value` must be numeric" = is.numeric(df$val))
 
   # percentile

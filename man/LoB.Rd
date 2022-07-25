@@ -6,7 +6,7 @@
 \usage{
 LoB(
   df,
-  col_lot,
+  col_lot = NULL,
   col_sample,
   col_value,
   parametric = FALSE,
@@ -15,11 +15,13 @@ LoB(
 )
 }
 \arguments{
-\item{df}{A data frame with blank samples.}
+\item{df}{A data frame with blank samples. Must have at least one column with sample
+and one column with measurement values. Column for reagent lot is optional.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
 
-\item{col_sample}{Name (in quotes) of the column with sample number.}
+\item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
+sample. Does not need to be numeric.}
 
 \item{col_value}{Name (in quotes) of the column with measurements.}
 
@@ -28,25 +30,25 @@ guidelines indicate that the non-parametric option is preferred in the vast majo
 
 \item{alpha}{Alpha (type I error). Default is 0.05.}
 
-\item{always_sep_lots}{If FALSE, reagent lots are evaluated according to CLSI guidelines
+\item{always_sep_lots}{If FALSE (the default), reagent lots are evaluated according to CLSI guidelines
 (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
-If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
-Default is FALSE.}
+If set to TRUE, all reagent lots are evaluated separately regardless of the number of lots.}
 }
 \value{
-Returns a list with the limit of blank (LoB) value and a histogram (if using the
-non-parametric approach).
+Returns the limit of blank (LoB) values for each lot (if evaluated separately),
+the overall reported LoB, and histogram(s) illustrating the LoB (if using the non-parametric
+approach).
 }
 \description{
 Limit of Blank (LoB) Calculation
 }
 \examples{
 # CLSI EP17 Appendix A
-reagent_lot <- c(rep(1, 12*5), rep(2, 12*5))
-day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
-sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
-replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
-measure <- c(2.6, -.8, 5.5, 6.0, 4.5, .6, -2.3, 3.4,
+Reagent <- c(rep(1, 12*5), rep(2, 12*5))
+Day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
+Sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
+Replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
+Measurement <- c(2.6, -.8, 5.5, 6.0, 4.5, .6, -2.3, 3.4,
             5.9, 7.6, 4.1, -1.4, 1.0, 2.9, 4.9, 8.0,
             6.9, 5.0, 3.4, 1.2, 6.5, 5.6, -2.2, 2.3,
             -4.4, -3.4, 7.0, 6.9, 4.3, 3.2, -1.4, 4.2,
@@ -62,9 +64,11 @@ measure <- c(2.6, -.8, 5.5, 6.0, 4.5, .6, -2.3, 3.4,
             3.7, 3.7, 5.3, 4.5, 4.0, 6.2, -.2, 2.3,
             1.6, 2.6, 6.4, 5.7, 4.2, 3.7, 1.4, 1.5)
 
-LoB_df <- data.frame(reagent_lot, day, sample, replicate, measure)
+LoB_df <- data.frame(Reagent, Day, Sample, Replicate, Measurement)
 
-results <- LoB(df = LoB_df, col_lot = "reagent_lot", col_sample = "sample",
-col_value = "measure")
+results <- LoB(df = LoB_df,
+               col_lot = "Reagent",
+               col_sample = "Sample",
+               col_val = "Measurement")
 
 }

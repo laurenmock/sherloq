@@ -12,11 +12,18 @@
 #' which, with a predefined probability (usually 95%), measurement results yield a
 #' positive classification.
 #'
-#' @param df A data frame with...
-#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).
+#' @param df This function takes two possible data frame shapes. The data frame can contain
+#' either 1) 0s/1s representing negative/positive results for each row or 2) a column with each
+#' unique concentration level, a column with the total number of observed positives at that level,
+#' and a column with the number of total calls at that level.
+#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (default).
 #' @param col_conc Name (in quotes) of the column with the concentration.
-#' @param col_obs_pos Name (in quotes) of the column with the number of positive results.
-#' @param col_tot Name (in quotes) of the column with the total number of results.
+#' @param col_01 Name (in quotes) of the column with 0s and 1s for negative and positive results.
+#' Should be NULL if col_obs_pos and col_tot are provided.
+#' @param col_obs_pos Name (in quotes) of the column with the number of positive results. Should be
+#' NULL if col_01 is provided.
+#' @param col_tot Name (in quotes) of the column with the total number of results. Should be NULL
+#' if col_01 is provided.
 #' @param LoB Limit of blank (LoB). If the false positives in each reagent lot do not exceed
 #' (100*alpha)%, the LoB can be set to zero. Otherwise, calculate the LoB using the classical
 #' approach.
@@ -29,28 +36,33 @@
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
 #'
-#' @return Returns a list with the limit of detection (LoD) value as calculated with the probit
-#' approach, probit model coefficients, probit model fitted values and confidence intervals, and
-#' probit model plot.
+#' @return Returns a list with the fitted probit model(s), a plot with the model(s),
+#' the model predictions that were used to create the plot, the LoD values for each reagent
+#' lot (if evaluated separately), and the reported overall LoD.
 #'
 #' @examples
 #' # CLSI EP17 Appendix C
-#' conc <- rep(c(0, .006, .014, .025, .05, .15, .3, .5), each = 3)
-#' reagent_lot <- rep(c(1, 2, 3), times = 8)
-#' obs_positive <- c(0, 0, 0, 11, 12, 22, 15, 22, 31, 23, 28, 27, 29,
+#' Concentration <- rep(c(0, .006, .014, .025, .05, .15, .3, .5), each = 3)
+#' Reagent <- rep(c(1, 2, 3), times = 8)
+#' Observed_Positives <- c(0, 0, 0, 11, 12, 22, 15, 22, 31, 23, 28, 27, 29,
 #' 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32)
-#' total_calls <- c(22, 22, 22,30, 30, 34, 30, 30, 34, rep(32, 15))
+#' Total_Calls <- c(22, 22, 22,30, 30, 34, 30, 30, 34, rep(32, 15))
 #'
-#' LoD_P_df <- data.frame(conc, reagent_lot, obs_positive, total_calls)
+#' LoD_P_df <- data.frame(Concentration, Reagent, Observed_Positives, Total_Calls)
 #'
-#' LoD_probit(df = LoD_P_df, col_lot = "reagent_lot", col_conc = "conc",
-#' col_obs_pos = "obs_positive", col_tot = "total_calls", LoB = 0)
+#' results <- LoD_probit(df = LoD_P_df,
+#'                       col_lot = "Reagent",
+#'                       col_conc = "Concentration",
+#'                       col_obs_pos = "Observed_Positives",
+#'                       col_tot = "Total_Calls",
+#'                       LoB = 0)
 #'
 #' @export
 
 
-LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
-                            log10_trans = FALSE, beta = 0.05, always_sep_lots = FALSE){
+LoD_probit <- function(df, col_lot = NULL, col_conc,
+                       col_01 = NULL, col_obs_pos = NULL, col_tot = NULL,
+                       LoB, log10_trans = FALSE, beta = 0.05, always_sep_lots = FALSE){
 
   # check for missing data
   if(!all(stats::complete.cases(df))){
@@ -59,28 +71,50 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
     warning("Ignoring rows with missing values.")
   }
 
+  # confirm that column names exist in df
+  stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
+  stopifnot("`col_01` is not a column in df" = col_01 %in% names(df))
+  stopifnot("`col_conc` is not a column in df" = col_conc %in% names(df))
+  stopifnot("`col_obs_pos` is not a column in df" = col_obs_pos %in% names(df))
+  stopifnot("`col_tot` is not a column in df" = col_tot %in% names(df))
+
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
     df$lot <- 1
   }
 
-  # confirm that column names exist in df
-  stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
-  stopifnot("`col_conc` is not a column in df" = col_conc %in% names(df))
-  stopifnot("`col_obs_pos` is not a column in df" = col_obs_pos %in% names(df))
-  stopifnot("`col_tot` is not a column in df" = col_tot %in% names(df))
-
   # rename columns in df
   names(df)[names(df) == col_lot] <- "lot"
+  names(df)[names(df) == col_01] <- "call"
   names(df)[names(df) == col_conc] <- "conc"
   names(df)[names(df) == col_obs_pos] <- "obs_pos"
   names(df)[names(df) == col_tot] <- "tot"
 
+  # confirm that user provided col_01 or col_obs_pos and col_tot
+  if(is.null(col_01)){
+    stopifnot("since col_01 is NULL, col_obs_pos and col_tot must both be provided" =
+                !is.null(col_obs_pos) & !is.null(col_obs_pos))
+  # otherwise confirm that col_01 is all 0s and 1s
+  }else{
+    stopifnot("col_01 must contain only 0s and 1s" = all(df$call %in% c(0,1)))
+  }
+
   # confirm that columns are numeric
   stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
   stopifnot("`col_conc` must be numeric" = is.numeric(df$conc))
-  stopifnot("`col_obs_pos` must be numeric" = is.numeric(df$obs_pos))
-  stopifnot("`col_tot` must be numeric" = is.numeric(df$tot))
+  if(is.null(col_01)){
+    stopifnot("`col_obs_pos` must be numeric" = is.numeric(df$obs_pos))
+    stopifnot("`col_tot` must be numeric" = is.numeric(df$tot))
+  }
+
+  # if user has provided data that is not yet aggregated -- aggregate it!
+  if(!is.null(col_01)){
+    df <- do.call(data.frame,
+                  stats::aggregate(df$call ~ df$conc + df$lot,
+                                   data = df,
+                                   FUN = function(x) c(obs_pos = sum(x), n = length(x)))) |>
+      stats::setNames(c("conc", "lot", "obs_pos", "tot"))
+  }
 
   # percentile
   pct <- 1 - beta
@@ -128,8 +162,8 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
   }
 
   # get model coefficients
-  mod_coeff <- lapply(mod, function(x) summary(x)$coef[,1])
-  names(mod_coeff) <- paste0("lot_", 1:n_lots)
+  # mod_coeff <- lapply(mod, function(x) summary(x)$coef[,1])
+  # names(mod_coeff) <- paste0("lot_", 1:n_lots)
 
   # check model fit with deviance
   chisq_p_val <- lapply(mod, function(x)
@@ -137,7 +171,7 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
 
   # if log transformed
   if(log10_trans){
-    new_vals <- seq(log(0.0001), log(1), by = 0.001) # possible log conc. values
+    new_vals <- seq(log(0.0001), max(df$conc_log10), by = 0.001) # possible log conc. values
     new_preds <- lapply(mod, function(x) stats::predict(x,
                                                  newdata = data.frame("conc_log10" = new_vals),
                                                  se.fit = TRUE)[1:2] |> as.data.frame())
@@ -147,7 +181,7 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
 
     # if not log transformed
   }else{
-    new_vals <- seq(0, 1, by = 0.0001) # possible conc. values
+    new_vals <- seq(0, max(df$conc), by = 0.0001) # possible conc. values
     new_preds <- lapply(mod, function(x) stats::predict(x,
                                                  newdata = data.frame("conc" = new_vals),
                                                  se.fit = TRUE)[1:2] |> as.data.frame())
@@ -186,7 +220,7 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
     # plot observed data
     with(lot_l,
          plot(conc, hit_rate, type = "p", log = "x", pch = 16,
-              main = paste0("Reagent Lot ", l),
+              main = ifelse(n_lots == 1, "", paste0("Reagent Lot ", l)),
               xlab = "Concentration (log scale)",
               ylab = "Hit Rate",
               ylim = c(0,1),
@@ -293,8 +327,11 @@ LoD_probit <- function(df, col_lot, col_conc, col_obs_pos, col_tot, LoB,
             paste(round(chisq_p_val,3), collapse = ", "), ").")
   }
 
-  output <- list(mod_coeff, pred_df, hit_rate_plot, LoD_vals)
-  names(output) <- c("mod_coeff", "model_predictions", "hit_rate_plot", "LoD_values")
+  # add names to make output easier to read
+  names(mod) <- paste0("lot_", 1:n_lots)
+
+  output <- list(mod, hit_rate_plot, pred_df, LoD_vals)
+  names(output) <- c("probit_model", "hit_rate_plot", "model_predictions", "LoD_values")
 
   return(output)
 }

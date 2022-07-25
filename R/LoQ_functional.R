@@ -1,9 +1,11 @@
 
 #' Limit of Quantitation (LoQ) Calculation--Functional Sensitivity Approach
 #'
-#' @param df A data frame with...
-#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).
-#' @param col_sample Name (in quotes) of the column with sample number.
+#' @param df A data frame with mean measurand concentrations and within-laboratory
+#' precision (obtained from CLSI EP05) for each sample from each reagent lot.
+#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+#' @param col_sample Name (in quotes) of any column with unique values that correspond to each
+#' sample. Does not need to be numeric.
 #' @param col_avg Name (in quotes) of the column with measurements.
 #' @param col_sd_wl Name (in quotes) of the column with within-lab precision.
 #' @param target_cv Desired coefficient of variation (sd/mean)*100.
@@ -17,27 +19,31 @@
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
 #'
-#' @return Returns the limit of quantitation (LoQ) value, model coefficients, and plot with fitted
-#' values from the model.
-#'
+#' @return Returns a list with the fitted power or power with intercept model(s), a plot with
+#' the model(s), the LoQ values for each reagent lot (if evaluated separately), and the
+#' reported overall LoQ.
 #'
 #' @examples
 #' # CLSI EP17 Appendix D1
-#' reagent_lot <- rep(c(1, 2), each = 9)
-#' sample <- rep(1:9, times = 2)
-#' avg <- c(.04, .053, .08, .111, .137, .164, .190, .214, .245,
+#' Reagent <- rep(c(1, 2), each = 9)
+#' Sample <- rep(1:9, times = 2)
+#' Mean <- c(.04, .053, .08, .111, .137, .164, .190, .214, .245,
 #' .041, .047, .077, .106, .136, .159, .182, .205, .234)
-#' sd_wl <- c(.016, .016, .016, .017, .014, .012, .011, .016, .013,
+#' SD_within_lab <- c(.016, .016, .016, .017, .014, .012, .011, .016, .013,
 #' .018, .014, .012, .019, .016, .015, .015, .016, .014)
 #'
-#' LoQ_F_df <- data.frame(reagent_lot, sample, avg, sd_wl)
+#' LoQ_F_df <- data.frame(Reagent, Sample, Mean, SD_within_lab)
 #'
-#' LoQ_functional(df = LoQ_F_df, col_lot = "reagent_lot", col_sample = "sample",
-#' col_avg = "avg", col_sd_wl = "sd_wl", target_cv = 10, model = "power")
+#' results <- LoQ_functional(df = LoQ_F_df,
+#'                           col_lot = "Reagent",
+#'                           col_sample = "Sample",
+#'                           col_avg = "Mean",
+#'                           col_sd_wl = "SD_within_lab",
+#'                           target_cv = 10)
 #'
 #' @export
 
-LoQ_functional <- function(df, col_lot, col_sample, col_avg, col_sd_wl, target_cv,
+LoQ_functional <- function(df, col_lot = NULL, col_sample, col_avg, col_sd_wl, target_cv,
                            model = c("power", "power w intercept"),
                            coeff_start = NULL, always_sep_lots = FALSE){
 
@@ -77,15 +83,16 @@ LoQ_functional <- function(df, col_lot, col_sample, col_avg, col_sd_wl, target_c
   stopifnot("`col_avg` is not a column in df" = col_avg %in% names(df))
   stopifnot("`col_sd_wl` is not a column in df" = col_sd_wl %in% names(df))
 
+  # make a new column for sample
+  df$sample <- df[[col_sample]]
+
   # rename columns in df
   names(df)[names(df) == col_lot] <- "lot"
-  names(df)[names(df) == col_sample] <- "sample"
   names(df)[names(df) == col_avg] <- "avg"
   names(df)[names(df) == col_sd_wl] <- "sd_wl"
 
   # confirm that col_avg and col_sd_wl are numeric
   stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
-  stopifnot("`col_sample` must be numeric" = is.numeric(df$sample))
   stopifnot("`col_avg` must be numeric" = is.numeric(df$avg))
   stopifnot("`col_sd_wl` must be numeric" = (is.numeric(df$sd_wl) & all(df$sd_wl >= 0)))
 
@@ -136,7 +143,7 @@ LoQ_functional <- function(df, col_lot, col_sample, col_avg, col_sd_wl, target_c
   # otherwise just fit power model with coeff_start
   }else if(model == "power"){
 
-    mods <- lapply(lots_list, function(x) nls(cv ~ I(c0*avg^c1), data = x,
+    mods <- lapply(lots_list, function(x) stats::nls(cv ~ I(c0*avg^c1), data = x,
                                               start = list(c0 = coeff_start[1],
                                                            c1 = coeff_start[2])))
 
@@ -161,7 +168,7 @@ LoQ_functional <- function(df, col_lot, col_sample, col_avg, col_sd_wl, target_c
 
     # fit NLS models
     mods <- lapply(1:n_lots, function(l) stats::nls(cv ~ I(c0 + c1*avg^c2), data = lots_list[[l]],
-                                                    start = list(c0 = cv_at_min[l],
+                                                    start = list(c0 = cv_at_max[l],
                                                                  c1 = ints[l],
                                                                  c2 = slopes[l])))
 
@@ -212,11 +219,11 @@ LoQ_functional <- function(df, col_lot, col_sample, col_avg, col_sd_wl, target_c
        plot(avg, cv, col = pal[as.factor(lot)], pch = 16,
             main = "Check model fit", xlab = "Measurand", ylab = "CV"))
   new_vals <- seq(0, max(df$avg), length = 100)
-  new_preds <- list()
-  for(l in 1:n_lots){
-    new_preds[[l]] <- stats::predict(mods[[l]], new_vals |> as.data.frame() |> stats::setNames("avg"))
-    graphics::lines(new_vals, new_preds[[l]], col = pal[l], lty = 2)
-  }
+  new_preds <- lapply(1:n_lots, function(x)
+    stats::predict(mods[[x]], new_vals |> as.data.frame() |> stats::setNames("avg")))
+  temp <- lapply(1:n_lots, function(x)
+    graphics::lines(new_vals, new_preds[[x]], col = pal[x], lty = 2))
+
 
   # add legend
   if(n_lots > 1){
@@ -243,8 +250,11 @@ LoQ_functional <- function(df, col_lot, col_sample, col_avg, col_sd_wl, target_c
     names(LoQ_vals)[n_lots + 1] <- "reported"
   }
 
-  output <- list(mods_coef, mod_plot, LoQ_vals)
-  names(output) <- c("model_coeff", "model_plot", "LoQ_values")
+  # add names to make output easier to read
+  names(mods) <- paste0("lot_", 1:n_lots)
+
+  output <- list(mods, mod_plot, LoQ_vals)
+  names(output) <- c("model", "model_plot", "LoQ_values")
 
   return(output)
 }

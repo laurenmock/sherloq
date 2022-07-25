@@ -6,10 +6,11 @@
 \usage{
 LoD_probit(
   df,
-  col_lot,
+  col_lot = NULL,
   col_conc,
-  col_obs_pos,
-  col_tot,
+  col_01 = NULL,
+  col_obs_pos = NULL,
+  col_tot = NULL,
   LoB,
   log10_trans = FALSE,
   beta = 0.05,
@@ -17,15 +18,23 @@ LoD_probit(
 )
 }
 \arguments{
-\item{df}{A data frame with...}
+\item{df}{This function takes two possible data frame shapes. The data frame can contain
+either 1) 0s/1s representing negative/positive results for each row or 2) a column with each
+unique concentration level, a column with the total number of observed positives at that level,
+and a column with the number of total calls at that level.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
 
 \item{col_conc}{Name (in quotes) of the column with the concentration.}
 
-\item{col_obs_pos}{Name (in quotes) of the column with the number of positive results.}
+\item{col_01}{Name (in quotes) of the column with 0s and 1s for negative and positive results.
+Should be NULL if col_obs_pos and col_tot are provided.}
 
-\item{col_tot}{Name (in quotes) of the column with the total number of results.}
+\item{col_obs_pos}{Name (in quotes) of the column with the number of positive results. Should be
+NULL if col_01 is provided.}
+
+\item{col_tot}{Name (in quotes) of the column with the total number of results. Should be NULL
+if col_01 is provided.}
 
 \item{LoB}{Limit of blank (LoB). If the false positives in each reagent lot do not exceed
 (100*alpha)\%, the LoB can be set to zero. Otherwise, calculate the LoB using the classical
@@ -43,23 +52,38 @@ If TRUE, all reagent lots are evaluated separately regardless of the number of l
 Default is FALSE.}
 }
 \value{
-Returns a list with the limit of detection (LoD) value as calculated with the probit
-approach, probit model coefficients, probit model fitted values and confidence intervals, and
-probit model plot.
+Returns a list with the fitted probit model(s), a plot with the model(s),
+the model predictions that were used to create the plot, the LoD values for each reagent
+lot (if evaluated separately), and the reported overall LoD.
 }
 \description{
-Limit of Detection (LoD) Calculation--Probit Approach
+When should I use the probit approach to calculate LoD?
+}
+\details{
+From CLSI EP17 guidelines:
+Molecular measurement procedures (eg, for infectious diseases, nucleic acid testing)
+differ from typical measurement procedures because all blank or negative sample
+results normally are reported as negative. The false-positive rate is much lower
+than 5\% (typically below 0.5\%), and the LoB, typically, is taken to be zero. The LoD
+is calculated from a probit regression model as the measurand concentration at
+which, with a predefined probability (usually 95\%), measurement results yield a
+positive classification.
 }
 \examples{
-conc <- rep(c(0, .006, .014, .025, .05, .15, .3, .5), each = 3)
-reagent_lot <- rep(c(1, 2, 3), times = 8)
-obs_positive <- c(0, 0, 0, 11, 12, 22, 15, 22, 31, 23, 28, 27, 29,
+# CLSI EP17 Appendix C
+Concentration <- rep(c(0, .006, .014, .025, .05, .15, .3, .5), each = 3)
+Reagent <- rep(c(1, 2, 3), times = 8)
+Observed_Positives <- c(0, 0, 0, 11, 12, 22, 15, 22, 31, 23, 28, 27, 29,
 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32)
-total_calls <- c(22, 22, 22,30, 30, 34, 30, 30, 34, rep(32, 15))
+Total_Calls <- c(22, 22, 22,30, 30, 34, 30, 30, 34, rep(32, 15))
 
-LoD_P_df <- data.frame(conc, reagent_lot, obs_positive, total_calls)
+LoD_P_df <- data.frame(Concentration, Reagent, Observed_Positives, Total_Calls)
 
-LoD_probit(df = LoD_P_df, col_lot = "reagent_lot", col_conc = "conc",
-col_obs_pos = "obs_positive", col_tot = "total_calls", LoB = 0)
+results <- LoD_probit(df = LoD_P_df,
+                      col_lot = "Reagent",
+                      col_conc = "Concentration",
+                      col_obs_pos = "Observed_Positives",
+                      col_tot = "Total_Calls",
+                      LoB = 0)
 
 }

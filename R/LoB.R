@@ -1,28 +1,30 @@
 
 #' Limit of Blank (LoB) Calculation
 #'
-#' @param df A data frame with blank samples.
-#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).
-#' @param col_sample Name (in quotes) of the column with sample number.
+#' @param df A data frame with blank samples. Must have at least one column with sample
+#' and one column with measurement values. Column for reagent lot is optional.
+#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+#' @param col_sample Name (in quotes) of any column with unique values that correspond to each
+#' sample. Does not need to be numeric.
 #' @param col_value Name (in quotes) of the column with measurements.
 #' @param parametric Parametric (TRUE) or non-parametric (FALSE). Default is non-parametric. CLSI
 #' guidelines indicate that the non-parametric option is preferred in the vast majority of cases.
 #' @param alpha Alpha (type I error). Default is 0.05.
-#' @param always_sep_lots If FALSE, reagent lots are evaluated according to CLSI guidelines
+#' @param always_sep_lots If FALSE (the default), reagent lots are evaluated according to CLSI guidelines
 #' (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
-#' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
-#' Default is FALSE.
+#' If set to TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #'
-#' @return Returns a list with the limit of blank (LoB) value and a histogram (if using the
-#' non-parametric approach).
+#' @return Returns the limit of blank (LoB) values for each lot (if evaluated separately),
+#' the overall reported LoB, and histogram(s) illustrating the LoB (if using the non-parametric
+#' approach).
 #'
 #' @examples
 #' # CLSI EP17 Appendix A
-#' reagent_lot <- c(rep(1, 12*5), rep(2, 12*5))
-#' day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
-#' sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
-#' replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
-#' measure <- c(2.6, -.8, 5.5, 6.0, 4.5, .6, -2.3, 3.4,
+#' Reagent <- c(rep(1, 12*5), rep(2, 12*5))
+#' Day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
+#' Sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
+#' Replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
+#' Measurement <- c(2.6, -.8, 5.5, 6.0, 4.5, .6, -2.3, 3.4,
 #'             5.9, 7.6, 4.1, -1.4, 1.0, 2.9, 4.9, 8.0,
 #'             6.9, 5.0, 3.4, 1.2, 6.5, 5.6, -2.2, 2.3,
 #'             -4.4, -3.4, 7.0, 6.9, 4.3, 3.2, -1.4, 4.2,
@@ -38,14 +40,16 @@
 #'             3.7, 3.7, 5.3, 4.5, 4.0, 6.2, -.2, 2.3,
 #'             1.6, 2.6, 6.4, 5.7, 4.2, 3.7, 1.4, 1.5)
 #'
-#' LoB_df <- data.frame(reagent_lot, day, sample, replicate, measure)
+#' LoB_df <- data.frame(Reagent, Day, Sample, Replicate, Measurement)
 #'
-#' results <- LoB(df = LoB_df, col_lot = "reagent_lot", col_sample = "sample",
-#' col_value = "measure")
+#' results <- LoB(df = LoB_df,
+#'                col_lot = "Reagent",
+#'                col_sample = "Sample",
+#'                col_val = "Measurement")
 #'
 #' @export
 
-LoB <- function(df, col_lot, col_sample, col_value,
+LoB <- function(df, col_lot = NULL, col_sample, col_value,
                 parametric = FALSE, alpha = 0.05, always_sep_lots = FALSE){
 
   # check for missing data
@@ -60,20 +64,21 @@ LoB <- function(df, col_lot, col_sample, col_value,
   stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
   stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
 
+  # make a new column for sample
+  df$sample <- df[[col_sample]]
+
   # rename columns in df
   names(df)[names(df) == col_lot] <- "lot"
-  names(df)[names(df) == col_sample] <- "sample"
   names(df)[names(df) == col_value] <- "val"
-
-  # confirm that columns are numeric
-  stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
-  stopifnot("`col_sample` must be numeric" = is.numeric(df$sample))
-  stopifnot("`col_value` must be numeric" = is.numeric(df$val))
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
     df$lot <- 1
   }
+
+  # confirm that columns are numeric
+  stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
+  stopifnot("`col_value` must be numeric" = is.numeric(df$val))
 
   # percentile
   pct <- 1 - alpha
@@ -114,33 +119,41 @@ LoB <- function(df, col_lot, col_sample, col_value,
     # sort measurements
     sorted <- lapply(lots_list, function(x) sort(x$val))
 
+    # don't let rank_above be higher than the length of the sorted data
+    rank_above <- sapply(1:n_lots, function(x)
+      ifelse(rank_above[x] > length(sorted[[x]]), length(sorted[[x]]), rank_above))
+
     # interpolate measurement for exact rank position (LoB)
-    LoB_vals <- lapply(1:n_lots, function(l) sorted[[l]][rank_below[l]] +
+    LoB_vals <- sapply(1:n_lots, function(l) sorted[[l]][rank_below[l]] +
       (rank_exact[l] - rank_below[l])*(sorted[[l]][rank_above[l]] - sorted[[l]][rank_below[l]]))
 
     graphics::plot.new()
-
-    # plot
-    # opar <- graphics::par(mfrow = c(1, n_lots),
-    #             mar = c(3, 3, 2, 1),
-    #             mgp = c(2, 0.5, 0),
-    #             tck = -.01)
 
     graphics::par(mfrow = c(1, n_lots),
                   mar = c(3, 3, 2, 1),
                   mgp = c(2, 0.5, 0),
                   tck = -.01)
 
+    # histogram
+    # for(l in 1:n_lots){
+    #   graphics::hist(lots_list[[l]]$val,
+    #                  main = ifelse(n_lots == 1, "", paste0("Reagent Lot ", l)),
+    #                  xlab = "Measurement",
+    #                  xlim = c(min(df$val), max(df$val)),
+    #                  col = "skyblue")
+    #   graphics::abline(v = LoB_vals[[l]], col = "red", lwd = 2, lty = 2)
+    # }
+
+    # boxplot
     for(l in 1:n_lots){
-      graphics::hist(lots_list[[l]]$val,
-                     main = ifelse(n_lots == 1, "", paste0("Reagent Lot ", l)),
-                     xlab = "Measurement",
-                     xlim = c(min(df$val), max(df$val)))
-      graphics::abline(v = LoB_vals[[l]], col = "red", lwd = 2, lty = 2)
+      graphics::boxplot(lots_list[[l]]$val,
+                        main = ifelse(n_lots == 1, "", paste0("Reagent Lot ", l)),
+                        ylab = "Measurement",
+                        ylim = c(min(df$val), max(df$val)))
+      graphics::abline(h = LoB_vals[l], col = "red", lty = 2)
     }
 
-    LoB_hist <- grDevices::recordPlot()
-    # par(opar)
+    LoB_boxp <- grDevices::recordPlot()
 
 
   # parametric
@@ -176,11 +189,11 @@ LoB <- function(df, col_lot, col_sample, col_value,
 
   # report LoB values and histograms
   if(parametric){
-    output <- list(LoB_vals)
+    output <- list(as.list(LoB_vals))
     names(output) <- c("LoB_values")
   }else{
-    output <- list(LoB_hist, LoB_vals)
-    names(output) <- c("histograms", "LoB_values")
+    output <- list(LoB_boxp, as.list(LoB_vals))
+    names(output) <- c("LoB_boxplots", "LoB_values")
   }
 
   # return list of LoB values

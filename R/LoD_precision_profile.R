@@ -11,19 +11,24 @@
 #' Implementation of this approach assumes that variability of measurement results vs
 #' the mean measurand concentration can be fitted adequately with a precision profile model.
 #'
-#' @param df A data frame with with the mean value and within-laboratory precision (obtained
-#' from CLSI EP05) for each sample from each reagent lot.
-#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).
-#' @param col_sample Name (in quotes) of the column with sample number.
+#' @param df A data frame with with mean measurand concentrations and within-laboratory
+#' precision (obtained from CLSI EP05) for each sample from each reagent lot.
+#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+#' @param col_sample Name (in quotes) of any column with unique values that correspond to each
+#' sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.
 #' @param col_avg Name (in quotes) of the column with measurements.
 #' @param col_sd_wl Name (in quotes) of the column with within-lab precision.
-#' @param LoB_val Limit of blank (LoB).
-#' @param N Total number of measurement values per sample per reagent lot (number of measurements
-#' per sample times number of sample). If all reagent lots are pooled, use the total number
-#' of measurement values per sample (sum across all lots).
-#' @param model Choice of precision model. Default is to choose either the linear or quadratic model
-#' based on AIC. One can also select to use a linear, quadratic, or Sadler model, the three models
-#' most widely used in clinical literature (according to CLSI guidelines).
+#' @param LoB Limit of blank (LoB). Can be calculated using LoB function on data with
+#' blank samples.
+#' @param n_measures If there are 1) two or three reagent lots or 2) always_sep_lots = TRUE,
+#' meaning that the lots will be evaluated separately, n_measures is the total number of
+#' measurement values per reagent lot. If there are 1) four or more reagent lots or 2)
+#' col_lot = NULL, meaning that all lots will be pooled, n_measures is the total number of
+#' measurement values across all reagent lots.
+#' @param n_samples Unique number of samples. Only needs to be provided if col_sample = NULL.
+#' @param model Choice of precision model. Default is to choose either the linear or quadratic
+#' model based on AIC. One can also select to use a linear, quadratic, or Sadler model, the
+#' three models most widely used in clinical literature (according to CLSI guidelines).
 #' @param sadler_start Vector of length 3 with starting coefficient values for the Sadler model,
 #' with the form (beta0 + beta1*x)^beta2.
 #' @param beta Type II error. Default is 0.05.
@@ -32,26 +37,33 @@
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
 #'
-#' @return Returns a list with the limit of detection (LoD) value as calculated with the precision
-#' profile approach, precision model coefficients, and precision profile plot.
+#' @return Returns a list with the fitted precision profile model, the precision profile
+#' model plot, model predictions that were used to create the plot, the LoD values for each
+#' reagent lot (if evaluated separately), and the reported overall LoD.
 #'
 #' @examples
 #' # CLSI EP17 Appendix B
-#' reagent_lot <- c(rep(1, 6), rep(2, 6))
-#' sample <- rep(c("A","B","C","D","E","F"), times = 2)
-#' avg <- c(.69, 1.42, 2.65, 4.08, 6.08, 10.36, .78, 1.73, 2.89, 3.82, 6.33, 10.92)
-#' sd_wl <- c(.39, .39, .46, .55, .64, 1.12, .29, .54, .55, .63, .82, 1.38)
+#' Reagent <- c(rep(1, 6), rep(2, 6))
+#' Sample <- rep(c("A","B","C","D","E","F"), times = 2)
+#' Mean <- c(.69, 1.42, 2.65, 4.08, 6.08, 10.36, .78, 1.73, 2.89, 3.82, 6.33, 10.92)
+#' SD_within_lab <- c(.39, .39, .46, .55, .64, 1.12, .29, .54, .55, .63, .82, 1.38)
 #'
-#' LoD_PP_df <- data.frame(reagent_lot, sample, avg, sd_wl)
+#' LoD_PP_df <- data.frame(Reagent, Sample, Mean, SD_within_lab)
 #'
-#' LoD_precision_profile(df = LoD_PP_df, col_lot = "reagent_lot", col_sample = "sample",
-#' col_avg = "avg", col_sd_wl = "sd_wl", LoB = 0.51, N = 80*6)
+#' results <- LoD_precision_profile(df = LoD_PP_df,
+#'                                  col_lot = "Reagent",
+#'                                  col_sample = "Sample",
+#'                                  col_avg = "Mean",
+#'                                  col_sd = "SD_within_lab",
+#'                                  LoB = 0.51,
+#'                                  n_measures = 80*6)
 #'
 #' @export
 
-LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, LoB_val, N,
-                                  model = c("lowest AIC", "linear", "quadratic", "sadler"),
-                                  sadler_start = NULL, beta = 0.05, always_sep_lots = FALSE){
+LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg, col_sd_wl,
+                                      LoB, n_measures, n_samples,
+                                      model = c("lowest AIC", "linear", "quadratic", "sadler"),
+                                      sadler_start = NULL, beta = 0.05, always_sep_lots = FALSE){
 
   model <- match.arg(model)
 
@@ -73,9 +85,11 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, L
   stopifnot("`col_avg` is not a column in df" = col_avg %in% names(df))
   stopifnot("`col_sd_wl` is not a column in df" = col_sd_wl %in% names(df))
 
+  # make a new column for sample
+  df$sample <- df[[col_sample]]
+
   # rename columns in df
   names(df)[names(df) == col_lot] <- "lot"
-  names(df)[names(df) == col_sample] <- "sample"
   names(df)[names(df) == col_avg] <- "avg"
   names(df)[names(df) == col_sd_wl] <- "sd_wl"
 
@@ -133,7 +147,7 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, L
                                     c1 = sadler_start[2],
                                     c2 = sadler_start[3])))
 
-        # if user didn't specify starting values
+          # if user didn't specify starting values
         }else{
 
           # Sadler model form:
@@ -155,6 +169,11 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, L
             stats::nls(sd_wl ~ I((c0 + c1*avg)^c2), data = lots_list[[l]],
                        start = list(c0 = ints[l], c1 = slopes[l], c2 = 0.1)))
 
+          #---------------#
+
+          # sadler_mod <- lapply(lots_list, function(x)
+          #   minpack.lm::nlsLM(sd_wl ~ I((c0 + c1*avg)^c2), data = df,
+          #                     start = list(c0=1, c1=0.05, c2=1)))
 
         }
 
@@ -204,13 +223,13 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, L
     if(best_mod == final_mod){
       message(paste0("The ", best_mod, " model, selected by the user, has the best model fit,
                      as determined by AIC."))
-    # warning if the selected model does not have the lowest AIC
+      # warning if the selected model does not have the lowest AIC
     }else{
       warning(paste0("The ", best_mod, " model may have a better model fit
                    than the ", model, " model, as determined by AIC."))
     }
 
-  # if user wants model with lowest AIC
+    # if user wants model with lowest AIC
   }else{
     final_mod <- best_mod
     message(paste0("Selecting the ", best_mod, " model, which has a better model fit than the ",
@@ -218,14 +237,14 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, L
   }
 
   # get model coefficients to report
-  mod_coeff <- lapply(all_mods[[final_mod]], function(x) summary(x)$coef[,1])
-  names(mod_coeff) <- paste0("lot_", 1:n_lots)
+  # mod_coeff <- lapply(all_mods[[final_mod]], function(x) summary(x)$coef[,1])
+  # names(mod_coeff) <- paste0("lot_", 1:n_lots)
 
 
   #----- plot precision profiles -----#
 
   # set x and y limits for plot
-  x_lims <- c(min(min(df$avg), LoB_val), max(df$avg))
+  x_lims <- c(min(min(df$avg), LoB), max(df$avg))
   y_lims <- c(min(df$sd_wl), max(df$sd_wl))
 
   # color blind safe palette
@@ -235,9 +254,9 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, L
   #opar <- par()
   graphics::plot.new()
   graphics::par(mfrow = c(1,1),
-      mar = c(3, 3, 2, 1),
-      mgp = c(2, 0.5, 0),
-      tck = -.01)
+                mar = c(3, 3, 2, 1),
+                mgp = c(2, 0.5, 0),
+                tck = -.01)
   plot(1, type = "n",
        main = "Check model fit", xlab = "Measurand", ylab = "Within-lab Precision", col = pal[1],
        xlim = x_lims, ylim = y_lims, pch = 16)
@@ -246,7 +265,7 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, L
   new_vals <- seq(from = x_lims[1], to = x_lims[2], length = 20)
   # model predictions
   new_preds <- lapply(1:n_lots, function(x) stats::predict(all_mods[[final_mod]][[x]], new_vals |>
-                                                      as.data.frame() |> stats::setNames("avg")))
+                                                             as.data.frame() |> stats::setNames("avg")))
 
   # save model predictions in a data frame
   pred_df <- unlist(new_preds) |> as.data.frame() |> stats::setNames("sd_pred")
@@ -258,9 +277,9 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, L
 
   # draw observed data and model predictions
   temp <- lapply(1:n_lots, function(x) graphics::points(lots_list[[x]]$avg, lots_list[[x]]$sd_wl,
-                                              col = pal[x], pch = 16))
+                                                        col = pal[x], pch = 16))
   temp <- lapply(1:n_lots, function(x) graphics::lines(new_vals, new_preds[[x]],
-                                             col = pal[x], lty = 2))
+                                                       col = pal[x], lty = 2))
 
   # add legend
   if(n_lots > 1){
@@ -282,18 +301,20 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, L
     # look at each lot separately
     lot_l <- df[df$lot == l,]
 
+    if(!is.null(col_sample)){
+      n_samples <- unique(lot_l$sample) |> length() # number of samples
+    }
+
     # critical value
-    N_tot <- N # total number of measurements per reagent lot
-    K <- unique(lot_l$sample) |> length() # number of samples
-    cp <- stats::qnorm(pct) / (1 - (1/(4*(N_tot-K)) ))
+    cp <- stats::qnorm(pct) / (1 - (1/(4*(n_measures - n_samples)) ))
 
     # predict within-lab precision across various measurement concentrations
-    trial_mc <- seq(from = LoB_val, to = stats::median(df$avg), by = .01)
+    trial_mc <- seq(from = LoB, to = stats::median(df$avg), by = .001)
     trial_sd <- stats::predict(all_mods[[final_mod]][[l]],
-                          newdata = trial_mc |> as.data.frame() |> stats::setNames("avg"))
+                               newdata = trial_mc |> as.data.frame() |> stats::setNames("avg"))
 
     # caculate LoD and bias for each trial
-    trial_LoD <- LoB_val + cp*trial_sd
+    trial_LoD <- LoB + cp*trial_sd
     bias <- trial_mc - trial_LoD
 
     # find measurand with bias closest to 0 and use those LoD values
@@ -306,17 +327,20 @@ LoD_precision_profile <- function(df, col_lot, col_sample, col_avg, col_sd_wl, L
     warning("Since there are at least four reagent lots in the data provided, CLSI guidelines
             recommend combining all reagent lots. Set `always_sep_lots` = FALSE to obtain a single,
             reportable estimate of LoD.")
-  # if only one LoD value, report as LoD_reported (not LoD_lot_1)
+    # if only one LoD value, report as LoD_reported (not LoD_lot_1)
   }else if(length(LoD_vals) == 1){
     names(LoD_vals)[1] <- "reported"
-  # otherwise find max LoD to report
+    # otherwise find max LoD to report
   }else{
     LoD_vals[n_lots + 1] <- unlist(LoD_vals) |> max()
     names(LoD_vals)[n_lots + 1] <- "reported"
   }
 
-  output <- list(mod_coeff, pred_df, mod_plot, LoD_vals)
-  names(output) <- c("model_coeff", "model_predictions", "mod_plot", "LoD_values")
+  # add names to make output easier to read
+  names(all_mods[[final_mod]]) <- paste0("lot_", 1:n_lots)
+
+  output <- list(all_mods[[final_mod]], pred_df, mod_plot, LoD_vals)
+  names(output) <- c(paste0(final_mod, "_model"), "model_predictions", "model_plot", "LoD_values")
 
   return(output)
 }

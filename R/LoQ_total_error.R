@@ -5,9 +5,10 @@
 #' this model is not used in the actual calculation of LoQ; it simply provides some insight into the
 #' range of measurement values that may be associated with a total error below the accuracy goal.
 #'
-#' @param df A data frame with...
-#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).
-#' @param col_sample Name (in quotes) of the column with sample number.
+#' @param df A data frame with low-level samples.
+#' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+#' @param col_sample Name (in quotes) of any column with unique values that correspond to each
+#' sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.
 #' @param col_ref Name (in quotes) of the column with reference/true values.
 #' @param col_value Name (in quotes) of the column with measurements.
 #' @param accuracy_goal Desired maximum total error as a percentage between 0 and 100.
@@ -16,17 +17,18 @@
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
 #'
-#' @return Returns a table with the total error for each sample in each lot, a plot with these
-#' total errors, and the limit of quantitation (LoQ) value.
+#' @return Returns a list with a table of the total errors for each sample in each lot,
+#' a plot with these total errors by mean measurement, the LoQ values values for each reagent
+#' lot if evaluated separately, and the reported overall LoQ.
 #'
 #' @examples
 #' # CLSI EP17 Appendix D2
-#' reagent_lot = c(rep(1, 9*5), rep(2, 9*5))
-#' day = rep(rep(c(1, 2, 3), each = 3, times = 10))
-#' sample = rep(c(1, 2, 3, 4, 5), each = 9, times = 2)
-#' reference_val = rep(c(38.2, 47.1, 44.7, 36.5, 42.8), each = 9, times = 2)
-#' replicate = rep(c(1, 2, 3), times = 3*5*2)
-#' measure = c(36.7, 37.9, 38.3, 36.8, 33.5, 39.2, 41.3, 37.9, 34.9,
+#' Reagent = c(rep(1, 9*5), rep(2, 9*5))
+#' Day = rep(rep(c(1, 2, 3), each = 3, times = 10))
+#' Sample = rep(c(1, 2, 3, 4, 5), each = 9, times = 2)
+#' Reference_Value = rep(c(38.2, 47.1, 44.7, 36.5, 42.8), each = 9, times = 2)
+#' Replicate = rep(c(1, 2, 3), times = 3*5*2)
+#' Measurement = c(36.7, 37.9, 38.3, 36.8, 33.5, 39.2, 41.3, 37.9, 34.9,
 #' 49.9, 50, 48.1, 47.8, 43.9, 45.6, 45.4, 51.5, 45.8,
 #' 46.1, 43.1, 39.4, 47.3, 45.8, 44.8, 44.6, 47.3, 38.9,
 #' 33.3, 34.2, 34.5, 43.1, 34, 37.1, 35.3, 32.4, 36, 42.9,
@@ -37,15 +39,19 @@
 #' 32.9, 33.1, 38.6, 36.2, 41.4, 33, 42, 44.1, 43.2, 46.6,
 #' 45.5, 43.5, 41.4, 48.2, 45.7)
 #'
-#' LoQ_TE_df <- data.frame(reagent_lot, day, sample, reference_val, replicate, measure)
+#' LoQ_TE_df <- data.frame(Reagent, Day, Sample, Reference_Value, Replicate, Measurement)
 #'
-#' LoQ_total_error(LoQ_TE_df, col_lot = "reagent_lot", col_sample = "sample",
-#' col_ref = "reference_val", col_value = "measure", accuracy_goal = 21.6)
+#' results <- LoQ_total_error(df = LoQ_TE_df,
+#'                            col_lot = "Reagent",
+#'                            col_sample = "Sample",
+#'                            col_ref = "Reference_Value",
+#'                            col_value = "Measurement",
+#'                            accuracy_goal = 21.6)
 #'
 #' @export
 
 
-LoQ_total_error <- function(df, col_lot, col_sample, col_ref, col_value,
+LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
                             accuracy_goal, always_sep_lots = FALSE){
 
   # check for missing data
@@ -60,27 +66,22 @@ LoQ_total_error <- function(df, col_lot, col_sample, col_ref, col_value,
     df$lot <- 1
   }
 
-  # warning if accuracy goal is less than 1
-  if(accuracy_goal <= 1){
-    warning("Did you input accuracy_goal as a decimal between 0 and 1 instead of a percentage
-            between 0 and 100?")
-  }
-
   # confirm that column names exist in df
   stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
   stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
   stopifnot("`col_ref` is not a column in df" = col_ref %in% names(df))
   stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
 
+  # make a new column for sample
+  df$sample <- df[[col_sample]]
+
   # rename columns in df
   names(df)[names(df) == col_lot] <- "lot"
-  names(df)[names(df) == col_sample] <- "sample"
   names(df)[names(df) == col_ref] <- "ref"
   names(df)[names(df) == col_value] <- "val"
 
   # confirm that columns are numeric
   stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
-  stopifnot("`col_sample` must be numeric" = is.numeric(df$sample))
   stopifnot("`col_ref` must be numeric" = is.numeric(df$ref))
   stopifnot("`col_value` must be numeric" = is.numeric(df$val))
 
@@ -109,7 +110,6 @@ LoQ_total_error <- function(df, col_lot, col_sample, col_ref, col_value,
   # re-order rows in sample_df
   sample_df <- sample_df[order(sample_df$lot, sample_df$sample),]
 
-
   # plot
   graphics::plot.new()
   graphics::par(mfrow = c(1, 1),
@@ -121,35 +121,44 @@ LoQ_total_error <- function(df, col_lot, col_sample, col_ref, col_value,
   pal <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
   plot(sample_df$val_mean, sample_df$te_pct, pch = 16, col = pal[as.factor(sample_df$lot)],
-       xlab = "Mean Measurement", ylab = "Total Error (%)",
+       xlab = "Mean Measurement (log scale)", ylab = "Total Error (%)",
        # xlim = c(min(sample_df$val_mean)/2, max(sample_df$val_mean)*2),
+       log = "x",
        ylim = c(0, max(max(sample_df$te_pct), accuracy_goal)))
-  graphics::abline(h = accuracy_goal, lwd = 1.5)
+  graphics::abline(h = accuracy_goal, lwd = 1.5, lty = 2, col = "red")
+
+  # add lines to connect points
+  lots_list <- split(sample_df, f = sample_df$lot)
+  temp <- lapply(1:n_lots,
+                 function(x) graphics::lines(lots_list[[x]]$val_mean[order(lots_list[[x]]$val_mean)],
+                                             lots_list[[x]]$te_pct[order(lots_list[[x]]$val_mean)],
+                                             xlim = range(lots_list[[x]]$val_mean),
+                                             ylim = range(lots_list[[x]]$val_mean), col = pal[x]))
+
 
   # add legend
   if(n_lots > 1){
     labs <- paste0("Lot ", 1:n_lots)
-    graphics::legend("bottomleft", pch = 16, lty = 2, legend = labs,
+    graphics::legend("bottomleft", pch = 16, lty = 1, legend = labs,
                      col = pal, cex = 0.7, bty = "n")
   }
 
-  # fit linear model across all lots, get fitted values, and add to plot
+  # # fit linear model across all lots and get fitted values
   lin_mod <- stats::lm(te_pct ~ val_mean, data = sample_df)
   vals <- seq(min(sample_df$val_mean), max(sample_df$val_mean), length.out = 100)
   te_preds <- stats::predict(lin_mod, newdata = vals |>
                                as.data.frame() |> stats::setNames("val_mean"))
-  graphics::lines(vals, te_preds, lty = 2)
-
-  # fit linear models for each lot, get fitted values, and add to plot
-  lots_list <- split(sample_df, f = sample_df$lot)
-  if(n_lots < 4){
-    lin_mod_l <- lapply(lots_list, function(x) stats::lm(te_pct ~ val_mean, data = x))
-    te_preds_l <- lapply(1:n_lots, function(x) stats::predict(lin_mod_l[[x]], newdata = vals |>
-                                                         as.data.frame() |>
-                                                         stats::setNames("val_mean")))
-    temp <- lapply(1:n_lots, function(x) graphics::lines(vals, te_preds_l[[x]],
-                                                         col = pal[x], lty = 2))
-  }
+  # graphics::lines(vals, te_preds, lty = 1)
+  #
+  # # fit linear models for each lot, get fitted values, and add to plot
+  # if(n_lots < 4){
+  #   lin_mod_l <- lapply(lots_list, function(x) stats::lm(te_pct ~ val_mean, data = x))
+  #   te_preds_l <- lapply(1:n_lots, function(x) stats::predict(lin_mod_l[[x]], newdata = vals |>
+  #                                                        as.data.frame() |>
+  #                                                        stats::setNames("val_mean")))
+  #   temp <- lapply(1:n_lots, function(x) graphics::lines(vals, te_preds_l[[x]],
+  #                                                        col = pal[x], lty = 1))
+  # }
 
   # each reagent lot needs at least one TE below the accuracy goal in order to move on
   new_dat_needed <- sapply(lots_list, function(x) all(x$te_pct > accuracy_goal)) |> any()
@@ -202,8 +211,16 @@ LoQ_total_error <- function(df, col_lot, col_sample, col_ref, col_value,
     names(LoQ_vals)[n_lots + 1] <- "reported"
   }
 
-  output <- list(sample_df, lin_mod, te_plot, LoQ_vals)
-  names(output) <- c("te_table", "linear_model", "te_plot", "LoQ_values")
+  # rename sample_df columns
+  names(sample_df) <- c("Sample", "Reagent", "Reference_Value", "Mean", "SD",
+                        "Bias", "Total_Error", "Total_Error_Percentage")
+
+  output <- list(sample_df,
+                 #lin_mod,
+                 te_plot, LoQ_vals)
+  names(output) <- c("total_error_table",
+                     #"linear_model",
+                     "total_error_plot", "LoQ_values")
 
   return(output)
 }

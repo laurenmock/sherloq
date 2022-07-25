@@ -6,7 +6,7 @@
 \usage{
 LoD_classical(
   df,
-  col_lot,
+  col_lot = NULL,
   col_sample,
   col_value,
   LoB,
@@ -15,11 +15,13 @@ LoD_classical(
 )
 }
 \arguments{
-\item{df}{A data frame with low-level samples.}
+\item{df}{A data frame with low-level samples. Must have at least one column with sample
+and one column with measurement values. Column for reagent lot is optional.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
 
-\item{col_sample}{Name (in quotes) of the column with sample number.}
+\item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
+sample. Does not need to be numeric.}
 
 \item{col_value}{Name (in quotes) of the column with measurements.}
 
@@ -33,19 +35,27 @@ If TRUE, all reagent lots are evaluated separately regardless of the number of l
 Default is FALSE.}
 }
 \value{
-Returns a list with the limit of detection (LoD) value as calculated with the classical
-parametric approach.
+Returns a list with the limit of detection (LoD) value(s) for each reagent lot
+(if evaluated separately) and the overall reported LoD.
 }
 \description{
-Limit of Detection (LoD) Calculation--Classical Approach
+When should I use the classical approach to calculate LoD?
+}
+\details{
+From CLSI EP17 guidelines:
+This is the original approach from the previous version of this document, which has been
+widely used for many chemistry and immunochemical measurement procedures. It uses
+measurements made on...a set of low level samples containing a measurand targeted
+around the assumed LoD... An underlying assumption is that variability of measurement
+results is reasonably consistent across the low level samples.
 }
 \examples{
 # CLSI EP17 Appendix A
-reagent_lot <- c(rep(1, 12*5), rep(2, 12*5))
-day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
-sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
-replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
-measure <- c(21.0, 22.8, 28.2, 25.9, 26.4, 28.3, 20.7, 21.9,
+Reagent <- c(rep(1, 12*5), rep(2, 12*5))
+Day <- rep(rep(c(1, 2, 3), each = 4, times = 10))
+Sample <- rep(c(1, 2, 3, 4, 5), each = 12, times = 2)
+Replicate <- rep(c(1, 2, 3, 4), times = 3*5*2)
+Measurement <- c(21.0, 22.8, 28.2, 25.9, 26.4, 28.3, 20.7, 21.9,
             24.7, 22.5, 28.5, 29.2, 13.3, 12.6, 18.2, 14.7,
             17.8, 14.0, 14.1, 12.5, 11.3, 12.2, 16.2, 13.9,
             12.8, 12.9, 17.4, 16.0, 15.9, 14.1, 11.3, 9.4,
@@ -61,9 +71,12 @@ measure <- c(21.0, 22.8, 28.2, 25.9, 26.4, 28.3, 20.7, 21.9,
             18.0, 18.0, 19.6, 23.1, 32.9, 30.4, 29.4, 27.6,
             27.7, 30.6, 31.4, 30.4, 32.5, 28.9, 29.8, 35.1)
 
-LoD_C_df <- data.frame(reagent_lot, day, sample, replicate, measure)
+LoD_C_df <- data.frame(Reagent, Day, Sample, Replicate, Measurement)
 
-LoD_classical(df = LoD_C_df, col_lot = "reagent_lot", col_sample = "sample",
-col_value = "measure", LoB = 7.5)
+results <- LoD_classical(df = LoD_C_df,
+                         col_lot = "Reagent",
+                         col_sample = "Sample",
+                         col_value = "Measurement",
+                         LoB = 7.5)
 
 }

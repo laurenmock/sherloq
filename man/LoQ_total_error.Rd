@@ -2,11 +2,11 @@
 % Please edit documentation in R/LoQ_total_error.R
 \name{LoQ_total_error}
 \alias{LoQ_total_error}
-\title{Limit of Quantitation (LoQ) Calculation with the Total Error Approach}
+\title{Limit of Quantitation (LoQ) Calculation--Total Error Approach}
 \usage{
 LoQ_total_error(
   df,
-  col_lot,
+  col_lot = NULL,
   col_sample,
   col_ref,
   col_value,
@@ -15,11 +15,12 @@ LoQ_total_error(
 )
 }
 \arguments{
-\item{df}{A data frame with...}
+\item{df}{A data frame with low-level samples.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
 
-\item{col_sample}{Name (in quotes) of the column with sample number.}
+\item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
+sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.}
 
 \item{col_ref}{Name (in quotes) of the column with reference/true values.}
 
@@ -33,8 +34,9 @@ If TRUE, all reagent lots are evaluated separately regardless of the number of l
 Default is FALSE.}
 }
 \value{
-Returns a table with the total error for each sample in each lot, a plot with these
-total errors, and the limit of quantitation (LoQ) value.
+Returns a list with a table of the total errors for each sample in each lot,
+a plot with these total errors by mean measurement, the LoQ values values for each reagent
+lot if evaluated separately, and the reported overall LoQ.
 }
 \description{
 Note: This function only fits a linear model to predict total error from mean measurement because
@@ -42,12 +44,13 @@ this model is not used in the actual calculation of LoQ; it simply provides some
 range of measurement values that may be associated with a total error below the accuracy goal.
 }
 \examples{
-reagent_lot = c(rep(1, 9*5), rep(2, 9*5))
-day = rep(rep(c(1, 2, 3), each = 3, times = 10))
-sample = rep(c(1, 2, 3, 4, 5), each = 9, times = 2)
-reference_val = rep(c(38.2, 47.1, 44.7, 36.5, 42.8), each = 9, times = 2)
-replicate = rep(c(1, 2, 3), times = 3*5*2)
-measure = c(36.7, 37.9, 38.3, 36.8, 33.5, 39.2, 41.3, 37.9, 34.9,
+# CLSI EP17 Appendix D2
+Reagent = c(rep(1, 9*5), rep(2, 9*5))
+Day = rep(rep(c(1, 2, 3), each = 3, times = 10))
+Sample = rep(c(1, 2, 3, 4, 5), each = 9, times = 2)
+Reference_Value = rep(c(38.2, 47.1, 44.7, 36.5, 42.8), each = 9, times = 2)
+Replicate = rep(c(1, 2, 3), times = 3*5*2)
+Measurement = c(36.7, 37.9, 38.3, 36.8, 33.5, 39.2, 41.3, 37.9, 34.9,
 49.9, 50, 48.1, 47.8, 43.9, 45.6, 45.4, 51.5, 45.8,
 46.1, 43.1, 39.4, 47.3, 45.8, 44.8, 44.6, 47.3, 38.9,
 33.3, 34.2, 34.5, 43.1, 34, 37.1, 35.3, 32.4, 36, 42.9,
@@ -58,9 +61,13 @@ measure = c(36.7, 37.9, 38.3, 36.8, 33.5, 39.2, 41.3, 37.9, 34.9,
 32.9, 33.1, 38.6, 36.2, 41.4, 33, 42, 44.1, 43.2, 46.6,
 45.5, 43.5, 41.4, 48.2, 45.7)
 
-LoQ_TE_df <- data.frame(reagent_lot, day, sample, reference_val, replicate, measure)
+LoQ_TE_df <- data.frame(Reagent, Day, Sample, Reference_Value, Replicate, Measurement)
 
-LoQ_total_error(LoQ_TE_df, col_lot = "reagent_lot", col_sample = "sample",
-col_ref = "reference_val", col_value = "measure", accuracy_goal = 21.6)
+results <- LoQ_total_error(df = LoQ_TE_df,
+                           col_lot = "Reagent",
+                           col_sample = "Sample",
+                           col_ref = "Reference_Value",
+                           col_value = "Measurement",
+                           accuracy_goal = 21.6)
 
 }

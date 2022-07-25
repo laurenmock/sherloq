@@ -2,26 +2,28 @@
 % Please edit documentation in R/LoQ_functional.R
 \name{LoQ_functional}
 \alias{LoQ_functional}
-\title{Limit of Quantitation (LoQ) Calculation with the Functional Sensitivity Approach}
+\title{Limit of Quantitation (LoQ) Calculation--Functional Sensitivity Approach}
 \usage{
 LoQ_functional(
   df,
-  col_lot,
+  col_lot = NULL,
   col_sample,
   col_avg,
   col_sd_wl,
   target_cv,
   model = c("power", "power w intercept"),
-  coeff_start,
+  coeff_start = NULL,
   always_sep_lots = FALSE
 )
 }
 \arguments{
-\item{df}{A data frame with...}
+\item{df}{A data frame with mean measurand concentrations and within-laboratory
+precision (obtained from CLSI EP05) for each sample from each reagent lot.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
 
-\item{col_sample}{Name (in quotes) of the column with sample number.}
+\item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
+sample. Does not need to be numeric.}
 
 \item{col_avg}{Name (in quotes) of the column with measurements.}
 
@@ -32,8 +34,9 @@ LoQ_functional(
 \item{model}{Select the power function (default) or power function with intercept to model
 coefficient of variation (CV) as a function of measurement value.}
 
-\item{coeff_start}{Vector with starting coefficient values for the selected model. Should have
-length 2 for the power function, or length 3 for the power function with intercept.}
+\item{coeff_start}{Optional vector with starting coefficient values for the selected model.
+Should have length 2 for the power function, or length 3 for the power function with intercept.
+Default is NULL, meaning start values will be estimated automatically.}
 
 \item{always_sep_lots}{If FALSE, reagent lots are evaluated according to CLSI guidelines
 (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
@@ -41,24 +44,29 @@ If TRUE, all reagent lots are evaluated separately regardless of the number of l
 Default is FALSE.}
 }
 \value{
-Returns the limit of quantitation (LoQ) value, model coefficients, and plot with fitted
-values from the model.
+Returns a list with the fitted power or power with intercept model(s), a plot with
+the model(s), the LoQ values for each reagent lot (if evaluated separately), and the
+reported overall LoQ.
 }
 \description{
-Limit of Quantitation (LoQ) Calculation with the Functional Sensitivity Approach
+Limit of Quantitation (LoQ) Calculation--Functional Sensitivity Approach
 }
 \examples{
-reagent_lot <- rep(c(1, 2), each = 9)
-sample <- rep(1:9, times = 2)
-avg <- c(.04, .053, .08, .111, .137, .164, .190, .214, .245,
+# CLSI EP17 Appendix D1
+Reagent <- rep(c(1, 2), each = 9)
+Sample <- rep(1:9, times = 2)
+Mean <- c(.04, .053, .08, .111, .137, .164, .190, .214, .245,
 .041, .047, .077, .106, .136, .159, .182, .205, .234)
-sd_wl <- c(.016, .016, .016, .017, .014, .012, .011, .016, .013,
+SD_within_lab <- c(.016, .016, .016, .017, .014, .012, .011, .016, .013,
 .018, .014, .012, .019, .016, .015, .015, .016, .014)
 
-LoQ_F_df <- data.frame(reagent_lot, sample, avg, sd_wl)
+LoQ_F_df <- data.frame(Reagent, Sample, Mean, SD_within_lab)
 
-LoQ_functional(df = LoQ_F_df, col_lot = "reagent_lot", col_sample = "sample",
-col_avg = "avg", col_sd_wl = "sd_wl", target_cv = 10, model = "power",
-coeff_start = c(0,0))
+results <- LoQ_functional(df = LoQ_F_df,
+                          col_lot = "Reagent",
+                          col_sample = "Sample",
+                          col_avg = "Mean",
+                          col_sd_wl = "SD_within_lab",
+                          target_cv = 10)
 
 }

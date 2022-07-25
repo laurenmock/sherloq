@@ -6,39 +6,46 @@
 \usage{
 LoD_precision_profile(
   df,
-  col_lot,
-  col_sample,
+  col_lot = NULL,
+  col_sample = NULL,
   col_avg,
   col_sd_wl,
-  LoB_val,
-  N,
+  LoB,
+  n_measures,
+  n_samples,
   model = c("lowest AIC", "linear", "quadratic", "sadler"),
-  sadler_start,
+  sadler_start = NULL,
   beta = 0.05,
   always_sep_lots = FALSE
 )
 }
 \arguments{
-\item{df}{A data frame with with the mean value and within-laboratory precision (obtained
-from CLSI EP05) for each sample from each reagent lot.}
+\item{df}{A data frame with with mean measurand concentrations and within-laboratory
+precision (obtained from CLSI EP05) for each sample from each reagent lot.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (no quotes).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
 
-\item{col_sample}{Name (in quotes) of the column with sample number.}
+\item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
+sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.}
 
 \item{col_avg}{Name (in quotes) of the column with measurements.}
 
 \item{col_sd_wl}{Name (in quotes) of the column with within-lab precision.}
 
-\item{LoB_val}{Limit of blank (LoB).}
+\item{LoB}{Limit of blank (LoB). Can be calculated using LoB function on data with
+blank samples.}
 
-\item{N}{Total number of measurement values per sample per reagent lot (number of measurements
-per sample times number of sample). If all reagent lots are pooled, use the total number
-of measurement values per sample (sum across all lots).}
+\item{n_measures}{If there are 1) two or three reagent lots or 2) always_sep_lots = TRUE,
+meaning that the lots will be evaluated separately, n_measures is the total number of
+measurement values per reagent lot. If there are 1) four or more reagent lots or 2)
+col_lot = NULL, meaning that all lots will be pooled, n_measures is the total number of
+measurement values across all reagent lots.}
 
-\item{model}{Choice of precision model. Default is to choose either the linear or quadratic model
-based on AIC. One can also select to use a linear, quadratic, or Sadler model, the three models
-most widely used in clinical literature (according to CLSI guidelines).}
+\item{n_samples}{Unique number of samples. Only needs to be provided if col_sample = NULL.}
+
+\item{model}{Choice of precision model. Default is to choose either the linear or quadratic
+model based on AIC. One can also select to use a linear, quadratic, or Sadler model, the
+three models most widely used in clinical literature (according to CLSI guidelines).}
 
 \item{sadler_start}{Vector of length 3 with starting coefficient values for the Sadler model,
 with the form (beta0 + beta1*x)^beta2.}
@@ -51,21 +58,37 @@ If TRUE, all reagent lots are evaluated separately regardless of the number of l
 Default is FALSE.}
 }
 \value{
-Returns a list with the limit of detection (LoD) value as calculated with the precision
-profile approach, precision model coefficients, and precision profile plot.
+Returns a list with the fitted precision profile model, the precision profile
+model plot, model predictions that were used to create the plot, the LoD values for each
+reagent lot (if evaluated separately), and the reported overall LoD.
 }
 \description{
-Limit of Detection (LoD) Calculation--Precision Profile Approach
+When should I use the precision profile approach to calculate LoD?
+}
+\details{
+From CLSI EP17 guidelines:
+The precision profile approach is useful when the variability of measurement results
+changes significantly in the region of the assumed LoD. It also may be useful in cases
+in which the developer wishes to make use of precision data that were acquired over a
+wider concentration interval than typically used for detection capability studies.
+Implementation of this approach assumes that variability of measurement results vs
+the mean measurand concentration can be fitted adequately with a precision profile model.
 }
 \examples{
-reagent_lot <- c(rep(1, 6), rep(2, 6))
-sample <- rep(c("A","B","C","D","E","F"), times = 2)
-avg <- c(.69, 1.42, 2.65, 4.08, 6.08, 10.36, .78, 1.73, 2.89, 3.82, 6.33, 10.92)
-sd_wl <- c(.39, .39, .46, .55, .64, 1.12, .29, .54, .55, .63, .82, 1.38)
+# CLSI EP17 Appendix B
+Reagent <- c(rep(1, 6), rep(2, 6))
+Sample <- rep(c("A","B","C","D","E","F"), times = 2)
+Mean <- c(.69, 1.42, 2.65, 4.08, 6.08, 10.36, .78, 1.73, 2.89, 3.82, 6.33, 10.92)
+SD_within_lab <- c(.39, .39, .46, .55, .64, 1.12, .29, .54, .55, .63, .82, 1.38)
 
-LoD_PP_df <- data.frame(reagent_lot, sample, avg, sd_wl)
+LoD_PP_df <- data.frame(Reagent, Sample, Mean, SD_within_lab)
 
-LoD_precision_profile(df = LoD_PP_df, col_lot = "reagent_lot", col_sample = "sample",
-col_avg = "avg", col_sd_wl = "sd_wl", LoB = 0.51, N = 80*6)
+results <- LoD_precision_profile(df = LoD_PP_df,
+                                 col_lot = "Reagent",
+                                 col_sample = "Sample",
+                                 col_avg = "Mean",
+                                 col_sd = "SD_within_lab",
+                                 LoB = 0.51,
+                                 n_measures = 80*6)
 
 }

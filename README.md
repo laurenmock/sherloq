@@ -1,19 +1,28 @@
 
-# detection
+# sherloq
 
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of detection is to ...
+sherloq can be used to calculate limit of blank (LoB), limit of detection (LoD), and limit
+of quantitation (LoQ) for detection capability studies. This package is based on CLSI EP17
+guidelines.
 
-Need to fill in the readme later!!
+There are six functions in this package:
+- LoB (non-parametric or parametric approach)
+- LoD_classical 
+- LoD_precision_profile
+- LoQ_probit
+- LoQ_functional
+- LoQ_total_error
 
 ## Installation
 
 You can install the development version of detection like so:
 
 ``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+devtools::install_git("https://stash.natera.com/projects/BIOS/repos/biostatistics_detection_capability.git")
+
 ```
 
 ## Example
@@ -21,7 +30,7 @@ You can install the development version of detection like so:
 This is a basic example which shows you how to solve a common problem:
 
 ``` r
-library(detection)
+library(sherloq)
 ## basic example code
 ```
 
