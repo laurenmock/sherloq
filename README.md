@@ -7,18 +7,14 @@
 `{sherloq}` is an R package that contains six functions for detection capability calculations:
 
 - Limit of Blank (LoB)
-    1. Classical
-        - Non-parametric
-        - Parametric  
-
+    - Classical (non-parametric and parametric)
 - Limit of Detection (LoD)
-    1. Classical
-    2. Precision profile
-    3. Probit  
-
+    - Classical
+    - Precision profile
+    - Probit  
 - Limit of Quantitation (LoQ)
-    1. Functional sensitivity
-    2. Total error
+    - Functional sensitivity
+    - Total error
 
 
 These functions are based on the Clinical & Laboratory Standards Institute (CLSI) EP17 guidelines for detection capability.
