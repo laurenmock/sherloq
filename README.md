@@ -22,7 +22,7 @@
 These functions are based on the Clinical & Laboratory Standards Institute (CLSI) EP17 guidelines for detection capability.
 
 
-[this subtext](data)
+(data)
 
 The vignettes folder contains a vignette with a demonstration of how to use `{sherloq}`.
 
