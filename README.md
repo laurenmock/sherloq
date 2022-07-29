@@ -12,20 +12,20 @@
         - Parametric  
 
 - Limit of Detection (LoD)
-    2. Classical
-    3. Precision profile
-    4. Probit  
+    1. Classical
+    2. Precision profile
+    3. Probit  
 
 - Limit of Quantitation (LoQ)
-    5. Functional sensitivity
-    6. Total error
+    1. Functional sensitivity
+    2. Total error
 
 
 These functions are based on the Clinical & Laboratory Standards Institute (CLSI) EP17 guidelines for detection capability.
 
 
 
-[vignettes](vignettes) contains a [vignette](vignettes/sherloq_demo.html) with a demonstration of how to use `{sherloq}`.
+[vignettes](vignettes) contains a vignette with a demonstration of how to use `{sherloq}`. You can view this vignette in Bitbucket by opening the html file in this folder and clicking "raw file" on the top right, or by opening and knitting the Rmd file.
 
 [R](R) folder contains the R functions.
 
