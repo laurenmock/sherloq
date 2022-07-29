@@ -38,8 +38,9 @@
 #' measurement values across all reagent lots.
 #' @param n_samples Unique number of samples. Only needs to be provided if col_sample = NULL.
 #' @param model Choice of precision model. Default is to choose either the linear or quadratic
-#' model based on AIC. One can also select to use a linear, quadratic, or Sadler model, the
-#' three models most widely used in clinical literature (according to CLSI guidelines).
+#' model based on AIC. You can also select to use a linear, quadratic, or Sadler model, the
+#' three models most widely used in clinical literature (according to CLSI guidelines). If
+#' you select the Sadler model, you must also provide starting coefficients with sadler_start.
 #' @param sadler_start Vector of length 3 with starting coefficient values for the Sadler model,
 #' with the form (beta0 + beta1*x)^beta2.
 #' @param beta Type II error. Default is 0.05.
