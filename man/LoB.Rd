@@ -11,14 +11,17 @@ LoB(
   col_value,
   parametric = FALSE,
   alpha = 0.05,
-  always_sep_lots = FALSE
+  always_sep_lots = FALSE,
+  plot = c("boxplot", "histogram")
 )
 }
 \arguments{
 \item{df}{A data frame with blank samples. Must have at least one column with sample
 and one column with measurement values. Column for reagent lot is optional.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+To split the LoB results by any other variable (e.g. lab), simply include the name
+of this other variable here and set always_sep_lots = TRUE.}
 
 \item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
 sample. Does not need to be numeric.}
@@ -30,9 +33,13 @@ guidelines indicate that the non-parametric option is preferred in the vast majo
 
 \item{alpha}{Alpha (type I error). Default is 0.05.}
 
-\item{always_sep_lots}{If FALSE (the default), reagent lots are evaluated according to CLSI guidelines
-(all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
-If set to TRUE, all reagent lots are evaluated separately regardless of the number of lots.}
+\item{always_sep_lots}{If FALSE (the default), reagent lots are evaluated according to CLSI
+guidelines (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3
+lots). If set to TRUE, all reagent lots are evaluated separately regardless of the number
+of lots.}
+
+\item{plot}{User can select to view either a box plot (default) or a histogram of all
+measurement values, split by reagent lot.}
 }
 \value{
 Returns the limit of blank (LoB) values for each lot (if evaluated separately),
@@ -40,7 +47,16 @@ the overall reported LoB, and histogram(s) illustrating the LoB (if using the no
 approach).
 }
 \description{
-Limit of Blank (LoB) Calculation
+CLSI EP17 Requirements:
+\itemize{
+\item Two reagent lots
+\item One instrument system
+\item Three days
+\item Four samples
+\item Two replicates per sample (for each reagent lot, day, and instrument system
+combination)
+\item 60 total blank replicates per reagent lot
+}
 }
 \examples{
 # CLSI EP17 Appendix A

@@ -11,9 +11,20 @@
 #' Implementation of this approach assumes that variability of measurement results vs
 #' the mean measurand concentration can be fitted adequately with a precision profile model.
 #'
+#' CLSI EP17 Requirements:
+#' - Two reagent lots
+#' - One instrument system
+#' - Five days
+#' - Five samples
+#' - Five replicates per sample (for each reagent lot, day, and instrument system
+#' combination)
+#' - 40 replicates per sample (across all days and instrument systems) per reagent lot
+#'
 #' @param df A data frame with with mean measurand concentrations and within-laboratory
 #' precision (obtained from CLSI EP05) for each sample from each reagent lot.
 #' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+#' To split the LoB results by any other variable (e.g. lab), simply include the name
+#' of this other variable here and set always_sep_lots = TRUE.
 #' @param col_sample Name (in quotes) of any column with unique values that correspond to each
 #' sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.
 #' @param col_avg Name (in quotes) of the column with measurements.
@@ -61,18 +72,11 @@
 #' @export
 
 LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg, col_sd_wl,
-                                      LoB, n_measures, n_samples,
+                                      LoB, n_measures, n_samples = NULL,
                                       model = c("lowest AIC", "linear", "quadratic", "sadler"),
                                       sadler_start = NULL, beta = 0.05, always_sep_lots = FALSE){
 
   model <- match.arg(model)
-
-  # check for missing data
-  if(!all(stats::complete.cases(df))){
-    # remove rows with missing values (and give warning)
-    df <- df[stats::complete.cases(df),]
-    warning("Ignoring rows with missing values.")
-  }
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
@@ -85,8 +89,27 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
   stopifnot("`col_avg` is not a column in df" = col_avg %in% names(df))
   stopifnot("`col_sd_wl` is not a column in df" = col_sd_wl %in% names(df))
 
+  # check for missing data
+  relev_cols <- c(col_lot, col_sample, col_avg, col_sd_wl)
+  if(!all(stats::complete.cases(df[,relev_cols]))){
+    # remove rows with missing values (and give warning)
+    df <- df[stats::complete.cases(df),]
+    warning("Ignoring rows with missing values.")
+  }
+
+  # warning if providing col_sample and n_samples
+  if(!is.null(col_sample) & !is.null(n_samples)){
+    warning("Both `col_sample` and `n_samples` have been provided. Only col_sample will be used." )
+
+  # error if neither col_sample nor n_samples is provided
+  } else if(is.null(col_sample) & is.null(n_samples)){
+    stop("You must provide either col_sample or n_samples.")
+  }
+
   # make a new column for sample
-  df$sample <- df[[col_sample]]
+  if(!is.null(col_sample)){
+    df$sample <- df[[col_sample]]
+  }
 
   # rename columns in df
   names(df)[names(df) == col_lot] <- "lot"
@@ -102,6 +125,10 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
   if(model == "sadler" & !is.null(sadler_start)){
     stopifnot("`sadler_start` must be NULL or a vector with three values (one for each
     coefficient in the Sadler model)" = length(sadler_start) == 3)
+  } else if(model == "sadler" & is.null(sadler_start)){
+    stop("The Sadler model requires you to specify `sadler_start` to be three values
+    (one for each coefficient in the Sadler model). You must specify these values or
+         select a different model.")
   }
 
   # percentile
@@ -138,44 +165,11 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
     tryCatch(
       expr = {
 
-        # if user specified starting values
-        if(!is.null(sadler_start)){
-
-          sadler_mod <- lapply(lots_list, function(x)
-            stats::nls(sd_wl ~ I((c0 + c1*avg)^c2), data = x,
-                       start = list(c0 = sadler_start[1],
-                                    c1 = sadler_start[2],
-                                    c2 = sadler_start[3])))
-
-          # if user didn't specify starting values
-        }else{
-
-          # Sadler model form:
-          # sd_wl = (c0 + c1*avg)^c2
-          # come up with an initial guess for c2
-          # take the log of both sides
-          # log(sd_wl) = c2*log(c0 + c1*avg)
-
-          # sd_wl^(1/c2) = c0 + c1*avg
-          # now fit a linear model
-          mods_lm <- lapply(lots_list, function(x) stats::lm(x$sd_wl^(1/1) ~ x$avg))
-
-          # get intercepts and slopes
-          ints <- sapply(mods_lm, function(x) summary(x)$coeff[1,1] |> exp())
-          slopes <- sapply(mods_lm, function(x) summary(x)$coeff[2,1])
-
-          # fit NLS models
-          sadler_mod <- lapply(1:n_lots, function(l)
-            stats::nls(sd_wl ~ I((c0 + c1*avg)^c2), data = lots_list[[l]],
-                       start = list(c0 = ints[l], c1 = slopes[l], c2 = 0.1)))
-
-          #---------------#
-
-          # sadler_mod <- lapply(lots_list, function(x)
-          #   minpack.lm::nlsLM(sd_wl ~ I((c0 + c1*avg)^c2), data = df,
-          #                     start = list(c0=1, c1=0.05, c2=1)))
-
-        }
+        sadler_mod <- lapply(lots_list, function(x)
+          stats::nls(sd_wl ~ I((c0 + c1*avg)^c2), data = x,
+                     start = list(c0 = sadler_start[1],
+                                  c1 = sadler_start[2],
+                                  c2 = sadler_start[3])))
 
         # add Sadler to list of models to compare with AIC
         mod_names[3] <- "sadler"

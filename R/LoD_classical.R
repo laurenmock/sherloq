@@ -10,9 +10,20 @@
 #' around the assumed LoD... An underlying assumption is that variability of measurement
 #' results is reasonably consistent across the low level samples.
 #'
+#' CLSI EP17 Requirements:
+#' - Two reagent lots
+#' - One instrument system
+#' - Three days
+#' - Four samples
+#' - Two replicates per sample (for each reagent lot, day, and instrument system
+#' combination)
+#' - 60 total replicates per reagent lot
+#'
 #' @param df A data frame with low-level samples. Must have at least one column with sample
 #' and one column with measurement values. Column for reagent lot is optional.
 #' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+#' To split the LoD results by any other variable (e.g. lab), simply include the name
+#' of this other variable here and set always_sep_lots = TRUE.
 #' @param col_sample Name (in quotes) of any column with unique values that correspond to each
 #' sample. Does not need to be numeric.
 #' @param col_value Name (in quotes) of the column with measurements.
@@ -61,22 +72,23 @@
 LoD_classical <- function(df, col_lot = NULL, col_sample, col_value, LoB, beta = 0.05,
                           always_sep_lots = FALSE){
 
-  # check for missing data
-  if(!all(stats::complete.cases(df))){
-    # remove rows with missing values (and give warning)
-    df <- df[stats::complete.cases(df),]
-    warning("Ignoring rows with missing values.")
-  }
+  # confirm that column names exist in df
+  stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
+  stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
+  stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
     df$lot <- 1
   }
 
-  # confirm that column names exist in df
-  stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
-  stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
-  stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
+  # check for missing data
+  relev_cols <- c(col_lot, col_sample, col_value)
+  if(!all(stats::complete.cases(df[,relev_cols]))){
+    # remove rows with missing values (and give warning)
+    df <- df[stats::complete.cases(df),]
+    warning("Ignoring rows with missing values.")
+  }
 
   # make a new column for sample
   df$sample <- df[[col_sample]]

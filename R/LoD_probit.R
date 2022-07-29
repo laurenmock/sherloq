@@ -12,11 +12,23 @@
 #' which, with a predefined probability (usually 95%), measurement results yield a
 #' positive classification.
 #'
+#' CLSI EP17 Requirements:
+#' - Two reagent lots
+#' - One instrument system
+#' - Three days
+#' - Three positive samples
+#' - 30 individual negative patient samples
+#' - Five dilutions per positive sample
+#' - 20 replicates per dilution (across all testing days) per positive sample per reagent lot
+#' - Two replicates (across all testing days) per negative sample per reagent lot
+#'
 #' @param df This function takes two possible data frame shapes. The data frame can contain
 #' either 1) 0s/1s representing negative/positive results for each row or 2) a column with each
 #' unique concentration level, a column with the total number of observed positives at that level,
 #' and a column with the number of total calls at that level.
 #' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+#' To split the LoD results by any other variable (e.g. lab), simply include the name
+#' of this other variable here and set always_sep_lots = TRUE.
 #' @param col_conc Name (in quotes) of the column with the concentration.
 #' @param col_01 Name (in quotes) of the column with 0s and 1s for negative and positive results.
 #' Should be NULL if col_obs_pos and col_tot are provided.
@@ -64,19 +76,20 @@ LoD_probit <- function(df, col_lot = NULL, col_conc,
                        col_01 = NULL, col_obs_pos = NULL, col_tot = NULL,
                        LoB, log10_trans = FALSE, beta = 0.05, always_sep_lots = FALSE){
 
-  # check for missing data
-  if(!all(stats::complete.cases(df))){
-    # remove rows with missing values (and give warning)
-    df <- df[stats::complete.cases(df),]
-    warning("Ignoring rows with missing values.")
-  }
-
   # confirm that column names exist in df
   stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
   stopifnot("`col_01` is not a column in df" = col_01 %in% names(df))
   stopifnot("`col_conc` is not a column in df" = col_conc %in% names(df))
   stopifnot("`col_obs_pos` is not a column in df" = col_obs_pos %in% names(df))
   stopifnot("`col_tot` is not a column in df" = col_tot %in% names(df))
+
+  # check for missing data
+  relev_cols <- c(col_lot, col_conc, col_01, col_obs_pos, col_tot)
+  if(!all(stats::complete.cases(df[,relev_cols]))){
+    # remove rows with missing values (and give warning)
+    df <- df[stats::complete.cases(df),]
+    warning("Ignoring rows with missing values.")
+  }
 
   # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
   if(is.null(col_lot)){
@@ -85,17 +98,21 @@ LoD_probit <- function(df, col_lot = NULL, col_conc,
 
   # rename columns in df
   names(df)[names(df) == col_lot] <- "lot"
-  names(df)[names(df) == col_01] <- "call"
   names(df)[names(df) == col_conc] <- "conc"
+  names(df)[names(df) == col_01] <- "call"
   names(df)[names(df) == col_obs_pos] <- "obs_pos"
   names(df)[names(df) == col_tot] <- "tot"
 
   # confirm that user provided col_01 or col_obs_pos and col_tot
   if(is.null(col_01)){
     stopifnot("since col_01 is NULL, col_obs_pos and col_tot must both be provided" =
-                !is.null(col_obs_pos) & !is.null(col_obs_pos))
+                !is.null(col_obs_pos) & !is.null(col_tot))
+  # if col_01 is provided, then col_obs_pos and col_tot should not be provided
+  } else if(!is.null(col_obs_pos) | !is.null(col_tot)){
+    stop("col_01 is provided, so col_obs_pos and col_tot should not be provided.
+              Please see documentation (?LoD_probit) for more details.")
   # otherwise confirm that col_01 is all 0s and 1s
-  }else{
+  } else {
     stopifnot("col_01 must contain only 0s and 1s" = all(df$call %in% c(0,1)))
   }
 
@@ -200,7 +217,7 @@ LoD_probit <- function(df, col_lot = NULL, col_conc,
 
 
   #---- plot -----#
-  graphics::plot.new()
+  # graphics::plot.new()
   graphics::par(mfrow = c(1, n_lots),
       mar = c(3, 3, 2, 1),
       mgp = c(2, 0.5, 0),
@@ -322,9 +339,15 @@ LoD_probit <- function(df, col_lot = NULL, col_conc,
 
   # warning about GOF
   if(any(chisq_p_val < 0.05)){
-    warning("Pearson chi-square goodness-of-fit tests indicate that the probit model fit
-            may be insufficient for at least one reagent lot (p-values: ",
-            paste(round(chisq_p_val,3), collapse = ", "), ").")
+    if(length(chisq_p_val) == 1){
+      warning("Pearson chi-square goodness-of-fit tests indicate that the probit model fit
+            may be insufficient.")
+    } else {
+      bad_fit <- which(chisq_p_val < 0.05)
+      warning("Pearson chi-square goodness-of-fit tests indicate that the probit model fit
+            may be insufficient for the following reagent lot(s): ",
+              bad_fit)
+    }
   }
 
   # add names to make output easier to read

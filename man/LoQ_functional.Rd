@@ -7,7 +7,6 @@
 LoQ_functional(
   df,
   col_lot = NULL,
-  col_sample,
   col_avg,
   col_sd_wl,
   target_cv,
@@ -20,10 +19,9 @@ LoQ_functional(
 \item{df}{A data frame with mean measurand concentrations and within-laboratory
 precision (obtained from CLSI EP05) for each sample from each reagent lot.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
-
-\item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
-sample. Does not need to be numeric.}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+To split the LoQ results by any other variable (e.g. lab), simply include the name
+of this other variable here and set always_sep_lots = TRUE.}
 
 \item{col_avg}{Name (in quotes) of the column with measurements.}
 
@@ -49,7 +47,17 @@ the model(s), the LoQ values for each reagent lot (if evaluated separately), and
 reported overall LoQ.
 }
 \description{
-Limit of Quantitation (LoQ) Calculation--Functional Sensitivity Approach
+CLSI EP17 Requirements:
+\itemize{
+\item Two reagent lots
+\item One instrument system
+\item Three days
+\item Three replicates per sample (for each reagent lot, day, and instrument system
+combination)
+\item Four independent low level samples
+\item 36 total low level sample replicates per reagent lot (across all low level samples,
+instrument systems, and days)
+}
 }
 \examples{
 # CLSI EP17 Appendix D1
@@ -64,7 +72,6 @@ LoQ_F_df <- data.frame(Reagent, Sample, Mean, SD_within_lab)
 
 results <- LoQ_functional(df = LoQ_F_df,
                           col_lot = "Reagent",
-                          col_sample = "Sample",
                           col_avg = "Mean",
                           col_sd_wl = "SD_within_lab",
                           target_cv = 10)

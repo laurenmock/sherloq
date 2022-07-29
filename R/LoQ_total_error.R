@@ -5,8 +5,20 @@
 #' this model is not used in the actual calculation of LoQ; it simply provides some insight into the
 #' range of measurement values that may be associated with a total error below the accuracy goal.
 #'
+#' CLSI EP17 Requirements:
+#' - Two reagent lots
+#' - One instrument system
+#' - Three days
+#' - Three replicates per sample (for each reagent lot, day, and instrument system
+#' combination)
+#' - Four independent low level samples
+#' - 36 total low level sample replicates per reagent lot (across all low level samples,
+#' instrument systems, and days)
+#'
 #' @param df A data frame with low-level samples.
 #' @param col_lot Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+#' To split the LoB results by any other variable (e.g. lab), simply include the name
+#' of this other variable here and set always_sep_lots = TRUE.
 #' @param col_sample Name (in quotes) of any column with unique values that correspond to each
 #' sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.
 #' @param col_ref Name (in quotes) of the column with reference/true values.
@@ -16,6 +28,8 @@
 #' (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
+#' @param plot_lm If TRUE, a linear model will be fit onto the plot of CV vs. measurand. FALSE
+#' (the default) will simply connect the points.
 #'
 #' @return Returns a list with a table of the total errors for each sample in each lot,
 #' a plot with these total errors by mean measurement, the LoQ values values for each reagent
@@ -52,25 +66,26 @@
 
 
 LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
-                            accuracy_goal, always_sep_lots = FALSE){
-
-  # check for missing data
-  if(!all(stats::complete.cases(df))){
-    # remove rows with missing values (and give warning)
-    df <- df[stats::complete.cases(df),]
-    warning("Ignoring rows with missing values.")
-  }
-
-  # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
-  if(is.null(col_lot)){
-    df$lot <- 1
-  }
+                            accuracy_goal, always_sep_lots = FALSE, plot_lm = FALSE){
 
   # confirm that column names exist in df
   stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
   stopifnot("`col_sample` is not a column in df" = col_sample %in% names(df))
   stopifnot("`col_ref` is not a column in df" = col_ref %in% names(df))
   stopifnot("`col_value` is not a column in df" = col_value %in% names(df))
+
+  # if column for reagent lot is NULL, make a column with a vector of 1s (all lot 1)
+  if(is.null(col_lot)){
+    df$lot <- 1
+  }
+
+  # check for missing data
+  relev_cols <- c(col_lot, col_sample, col_ref, col_value)
+  if(!all(stats::complete.cases(df[,relev_cols]))){
+    # remove rows with missing values (and give warning)
+    df <- df[stats::complete.cases(df),]
+    warning("Ignoring rows with missing values.")
+  }
 
   # make a new column for sample
   df$sample <- df[[col_sample]]
@@ -110,6 +125,8 @@ LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
   # re-order rows in sample_df
   sample_df <- sample_df[order(sample_df$lot, sample_df$sample),]
 
+  lots_list <- split(sample_df, f = sample_df$lot)
+
   # plot
   graphics::plot.new()
   graphics::par(mfrow = c(1, 1),
@@ -127,14 +144,16 @@ LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
        ylim = c(0, max(max(sample_df$te_pct), accuracy_goal)))
   graphics::abline(h = accuracy_goal, lwd = 1.5, lty = 2, col = "red")
 
-  # add lines to connect points
-  lots_list <- split(sample_df, f = sample_df$lot)
-  temp <- lapply(1:n_lots,
-                 function(x) graphics::lines(lots_list[[x]]$val_mean[order(lots_list[[x]]$val_mean)],
-                                             lots_list[[x]]$te_pct[order(lots_list[[x]]$val_mean)],
-                                             xlim = range(lots_list[[x]]$val_mean),
-                                             ylim = range(lots_list[[x]]$val_mean), col = pal[x]))
-
+  # if plot_lm = FALSE, add lines to connect points
+  if(plot_lm == FALSE){
+    # looks complicated but this is just ordering the points to draw the line correctly
+    temp <- lapply(1:n_lots,
+                   function(x) graphics::lines(x = lots_list[[x]]$val_mean[order(lots_list[[x]]$val_mean)],
+                                               y = lots_list[[x]]$te_pct[order(lots_list[[x]]$val_mean)],
+                                               xlim = range(lots_list[[x]]$val_mean),
+                                               ylim = range(lots_list[[x]]$val_mean),
+                                               col = pal[x]))
+  }
 
   # add legend
   if(n_lots > 1){
@@ -148,17 +167,20 @@ LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
   vals <- seq(min(sample_df$val_mean), max(sample_df$val_mean), length.out = 100)
   te_preds <- stats::predict(lin_mod, newdata = vals |>
                                as.data.frame() |> stats::setNames("val_mean"))
-  # graphics::lines(vals, te_preds, lty = 1)
-  #
-  # # fit linear models for each lot, get fitted values, and add to plot
-  # if(n_lots < 4){
-  #   lin_mod_l <- lapply(lots_list, function(x) stats::lm(te_pct ~ val_mean, data = x))
-  #   te_preds_l <- lapply(1:n_lots, function(x) stats::predict(lin_mod_l[[x]], newdata = vals |>
-  #                                                        as.data.frame() |>
-  #                                                        stats::setNames("val_mean")))
-  #   temp <- lapply(1:n_lots, function(x) graphics::lines(vals, te_preds_l[[x]],
-  #                                                        col = pal[x], lty = 1))
-  # }
+
+  if(plot_lm == TRUE){
+    graphics::lines(vals, te_preds, lty = 1)
+
+    # fit linear models for each lot, get fitted values, and add to plot
+    if(n_lots < 4){
+      lin_mod_l <- lapply(lots_list, function(x) stats::lm(te_pct ~ val_mean, data = x))
+      te_preds_l <- lapply(1:n_lots, function(x) stats::predict(lin_mod_l[[x]], newdata = vals |>
+                                                           as.data.frame() |>
+                                                           stats::setNames("val_mean")))
+      temp <- lapply(1:n_lots, function(x) graphics::lines(vals, te_preds_l[[x]],
+                                                           col = pal[x], lty = 1))
+    }
+  }
 
   # each reagent lot needs at least one TE below the accuracy goal in order to move on
   new_dat_needed <- sapply(lots_list, function(x) all(x$te_pct > accuracy_goal)) |> any()
@@ -224,4 +246,5 @@ LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
 
   return(output)
 }
+
 

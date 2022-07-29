@@ -11,13 +11,16 @@ LoQ_total_error(
   col_ref,
   col_value,
   accuracy_goal,
-  always_sep_lots = FALSE
+  always_sep_lots = FALSE,
+  plot_lm = FALSE
 )
 }
 \arguments{
 \item{df}{A data frame with low-level samples.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+To split the LoB results by any other variable (e.g. lab), simply include the name
+of this other variable here and set always_sep_lots = TRUE.}
 
 \item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
 sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.}
@@ -32,6 +35,9 @@ sample. Can be NULL (default) if n_samples is provided. Does not need to be nume
 (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
 If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 Default is FALSE.}
+
+\item{plot_lm}{If TRUE, a linear model will be fit onto the plot of CV vs. measurand. FALSE
+(the default) will simply connect the points.}
 }
 \value{
 Returns a list with a table of the total errors for each sample in each lot,
@@ -42,6 +48,19 @@ lot if evaluated separately, and the reported overall LoQ.
 Note: This function only fits a linear model to predict total error from mean measurement because
 this model is not used in the actual calculation of LoQ; it simply provides some insight into the
 range of measurement values that may be associated with a total error below the accuracy goal.
+}
+\details{
+CLSI EP17 Requirements:
+\itemize{
+\item Two reagent lots
+\item One instrument system
+\item Three days
+\item Three replicates per sample (for each reagent lot, day, and instrument system
+combination)
+\item Four independent low level samples
+\item 36 total low level sample replicates per reagent lot (across all low level samples,
+instrument systems, and days)
+}
 }
 \examples{
 # CLSI EP17 Appendix D2

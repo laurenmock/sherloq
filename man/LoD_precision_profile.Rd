@@ -12,7 +12,7 @@ LoD_precision_profile(
   col_sd_wl,
   LoB,
   n_measures,
-  n_samples,
+  n_samples = NULL,
   model = c("lowest AIC", "linear", "quadratic", "sadler"),
   sadler_start = NULL,
   beta = 0.05,
@@ -23,7 +23,9 @@ LoD_precision_profile(
 \item{df}{A data frame with with mean measurand concentrations and within-laboratory
 precision (obtained from CLSI EP05) for each sample from each reagent lot.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+To split the LoB results by any other variable (e.g. lab), simply include the name
+of this other variable here and set always_sep_lots = TRUE.}
 
 \item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
 sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.}
@@ -73,6 +75,17 @@ in which the developer wishes to make use of precision data that were acquired o
 wider concentration interval than typically used for detection capability studies.
 Implementation of this approach assumes that variability of measurement results vs
 the mean measurand concentration can be fitted adequately with a precision profile model.
+
+CLSI EP17 Requirements:
+\itemize{
+\item Two reagent lots
+\item One instrument system
+\item Five days
+\item Five samples
+\item Five replicates per sample (for each reagent lot, day, and instrument system
+combination)
+\item 40 replicates per sample (across all days and instrument systems) per reagent lot
+}
 }
 \examples{
 # CLSI EP17 Appendix B

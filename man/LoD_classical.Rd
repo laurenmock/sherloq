@@ -18,7 +18,9 @@ LoD_classical(
 \item{df}{A data frame with low-level samples. Must have at least one column with sample
 and one column with measurement values. Column for reagent lot is optional.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+To split the LoD results by any other variable (e.g. lab), simply include the name
+of this other variable here and set always_sep_lots = TRUE.}
 
 \item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
 sample. Does not need to be numeric.}
@@ -48,6 +50,17 @@ widely used for many chemistry and immunochemical measurement procedures. It use
 measurements made on...a set of low level samples containing a measurand targeted
 around the assumed LoD... An underlying assumption is that variability of measurement
 results is reasonably consistent across the low level samples.
+
+CLSI EP17 Requirements:
+\itemize{
+\item Two reagent lots
+\item One instrument system
+\item Three days
+\item Four samples
+\item Two replicates per sample (for each reagent lot, day, and instrument system
+combination)
+\item 60 total replicates per reagent lot
+}
 }
 \examples{
 # CLSI EP17 Appendix A

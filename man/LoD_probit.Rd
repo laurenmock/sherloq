@@ -23,7 +23,9 @@ either 1) 0s/1s representing negative/positive results for each row or 2) a colu
 unique concentration level, a column with the total number of observed positives at that level,
 and a column with the number of total calls at that level.}
 
-\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).}
+\item{col_lot}{Name (in quotes) of the column with reagent lot number. Can be NULL (default).
+To split the LoD results by any other variable (e.g. lab), simply include the name
+of this other variable here and set always_sep_lots = TRUE.}
 
 \item{col_conc}{Name (in quotes) of the column with the concentration.}
 
@@ -68,6 +70,18 @@ than 5\% (typically below 0.5\%), and the LoB, typically, is taken to be zero. T
 is calculated from a probit regression model as the measurand concentration at
 which, with a predefined probability (usually 95\%), measurement results yield a
 positive classification.
+
+CLSI EP17 Requirements:
+\itemize{
+\item Two reagent lots
+\item One instrument system
+\item Three days
+\item Three positive samples
+\item 30 individual negative patient samples
+\item Five dilutions per positive sample
+\item 20 replicates per dilution (across all testing days) per positive sample per reagent lot
+\item Two replicates (across all testing days) per negative sample per reagent lot
+}
 }
 \examples{
 # CLSI EP17 Appendix C
