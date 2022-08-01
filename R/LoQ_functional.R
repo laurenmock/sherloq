@@ -97,10 +97,17 @@ LoQ_functional <- function(df, col_lot = NULL, col_avg, col_sd_wl, target_cv,
   names(df)[names(df) == col_avg] <- "avg"
   names(df)[names(df) == col_sd_wl] <- "sd_wl"
 
-  # confirm that col_avg and col_sd_wl are numeric
-  stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
-  stopifnot("`col_avg` must be numeric" = is.numeric(df$avg))
-  stopifnot("`col_sd_wl` must be numeric" = (is.numeric(df$sd_wl) & all(df$sd_wl >= 0)))
+  # confirm that columns are numeric
+  tryCatch(
+    expr = {
+      df$lot <- as.numeric(df$lot)
+      df$avg <- as.numeric(df$avg)
+      df$sd_wl <- as.numeric(df$sd_wl)
+    },
+    warning = function(w){
+      stop("`col_lot`, `col_avg`, and `col_sd_wl` must be numeric")
+    }
+  )
 
   # calculate coefficient of variation
   df$cv <- (df$sd_wl/df$avg)*100

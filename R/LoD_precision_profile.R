@@ -118,9 +118,16 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
   names(df)[names(df) == col_sd_wl] <- "sd_wl"
 
   # confirm that columns are numeric
-  stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
-  stopifnot("`col_avg` must be numeric" = is.numeric(df$avg))
-  stopifnot("`col_sd_wl` must be numeric" = is.numeric(df$sd_wl))
+  tryCatch(
+    expr = {
+      df$lot <- as.numeric(df$lot)
+      df$avg <- as.numeric(df$avg)
+      df$sd_wl <- as.numeric(df$sd_wl)
+    },
+    warning = function(w){
+      stop("`col_lot`, `col_avg`, and `col_sd_wl` must be numeric")
+    }
+  )
 
   # if model is sadler, check sadler_start for starting values
   if(model == "sadler" & !is.null(sadler_start)){

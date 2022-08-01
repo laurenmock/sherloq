@@ -98,8 +98,15 @@ LoD_classical <- function(df, col_lot = NULL, col_sample, col_value, LoB, beta =
   names(df)[names(df) == col_value] <- "val"
 
   # confirm that columns are numeric
-  stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
-  stopifnot("`col_value` must be numeric" = is.numeric(df$val))
+  tryCatch(
+    expr = {
+      df$lot <- as.numeric(df$lot)
+      df$val <- as.numeric(df$val)
+    },
+    warning = function(w){
+      stop("`col_lot` and `col_value` must be numeric")
+    }
+  )
 
   # percentile
   pct <- 1 - beta

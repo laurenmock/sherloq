@@ -100,6 +100,19 @@ LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
   stopifnot("`col_ref` must be numeric" = is.numeric(df$ref))
   stopifnot("`col_value` must be numeric" = is.numeric(df$val))
 
+  # confirm that columns are numeric
+  tryCatch(
+    expr = {
+      df$lot <- as.numeric(df$lot)
+      df$ref <- as.numeric(df$ref)
+      df$val <- as.numeric(df$val)
+    },
+    warning = function(w){
+      stop("`col_lot`, `col_ref`, and `col_value` must be numeric")
+    }
+  )
+
+
   # find number of reagent lots
   n_lots <- unique(df$lot) |> length()
 

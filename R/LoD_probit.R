@@ -119,10 +119,31 @@ LoD_probit <- function(df, col_lot = NULL, col_conc,
   # confirm that columns are numeric
   stopifnot("`col_lot` must be numeric" = is.numeric(df$lot))
   stopifnot("`col_conc` must be numeric" = is.numeric(df$conc))
-  if(is.null(col_01)){
-    stopifnot("`col_obs_pos` must be numeric" = is.numeric(df$obs_pos))
-    stopifnot("`col_tot` must be numeric" = is.numeric(df$tot))
-  }
+
+  # confirm that columns are numeric
+  tryCatch(
+    expr = {
+      df$lot <- as.numeric(df$lot)
+      df$conc <- as.numeric(df$conc)
+
+      if(is.null(col_01)){
+        df$obs_pos <- as.numeric(df$obs_pos)
+        df$tot <- as.numeric(df$tot)
+      }
+    },
+    warning = function(w){
+      if(is.null(col_01)){
+        stop("`col_lot`, `col_avg`, and `col_01` must be numeric")
+      }else{
+        stop("`col_lot`, `col_avg`, `col_obs_pos`, and `col_tot` must be numeric")
+      }
+    }
+  )
+
+
+
+
+
 
   # if user has provided data that is not yet aggregated -- aggregate it!
   if(!is.null(col_01)){
