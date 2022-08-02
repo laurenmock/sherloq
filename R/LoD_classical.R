@@ -33,6 +33,8 @@
 #' (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
+#' @param plot User can select to view either a box plot (default) or a histogram of all
+#' measurement values, split by reagent lot.
 #'
 #' @return Returns a list with the limit of detection (LoD) value(s) for each reagent lot
 #' (if evaluated separately) and the overall reported LoD.
@@ -70,7 +72,9 @@
 #' @export
 
 LoD_classical <- function(df, col_lot = NULL, col_sample, col_value, LoB, beta = 0.05,
-                          always_sep_lots = FALSE){
+                          always_sep_lots = FALSE, plot = c("boxplot", "histogram")){
+
+  plot <- match.arg(plot)
 
   # confirm that column names exist in df
   stopifnot("`col_lot` is not a column in df" = col_lot %in% names(df))
@@ -168,5 +172,43 @@ LoD_classical <- function(df, col_lot = NULL, col_sample, col_value, LoB, beta =
     names(LoD_vals)[n_lots + 1] <- "reported"
   }
 
-  return(LoD_vals)
+  # make box plot or histogram
+  graphics::plot.new()
+
+  graphics::par(mfrow = c(1, n_lots),
+                mar = c(3, 3, 2, 1),
+                mgp = c(2, 0.5, 0),
+                tck = -.01)
+
+  # make reagent lots separate elements in a list
+  lots_list <- split(df, f = df$lot)
+
+  if(plot == "boxplot"){
+    # boxplot
+    for(l in 1:n_lots){
+      graphics::boxplot(lots_list[[l]]$val,
+                        main = ifelse(n_lots == 1, "", paste0("Reagent Lot ", l)),
+                        ylab = "Measurement",
+                        ylim = c(min(df$val), max(df$val)))
+      graphics::abline(h = LoD_vals[l], col = "red", lty = 2)
+    }
+
+  } else if(plot == "histogram"){
+    # histogram
+    for(l in 1:n_lots){
+      graphics::hist(lots_list[[l]]$val,
+                     main = ifelse(n_lots == 1, "", paste0("Reagent Lot ", l)),
+                     xlab = "Measurement",
+                     xlim = c(min(df$val), max(df$val)))
+      graphics::abline(v = LoD_vals[[l]], col = "red", lwd = 2, lty = 2)
+    }
+  }
+
+  LoD_plot <- grDevices::recordPlot()
+
+  # report LoD values and plot
+  output <- list(LoD_plot, as.list(LoD_vals))
+  names(output) <- c("LoD_plot", "LoD_values")
+
+  return(output)
 }
