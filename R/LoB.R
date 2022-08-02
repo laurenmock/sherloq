@@ -118,13 +118,27 @@ LoB <- function(df, col_lot = NULL, col_sample, col_value,
   }
 
   if(parametric){
-    # test to see if normally distributed
-    shapiro_pval <- stats::shapiro.test(df$val)$p.value |> round(4)
-    if(shapiro_pval <= 0.05){
-      warning(paste0("These values do not appear to be normally distributed
+
+    tryCatch(
+
+      expr = {
+        # test to see if normally distributed
+        shapiro_pval <- stats::shapiro.test(df$val)$p.value |> round(4)
+        if(shapiro_pval <= 0.05){
+          warning(paste0("These values do not appear to be normally distributed
                      (Shapiro-Wilk test p-value = ", shapiro_pval,
-                     "). Consider the non-parametric approach (recommended)."))
-    }
+                         "). Consider the non-parametric approach (recommended)."))
+        }
+      },
+
+      error = function(e){
+        warning(paste0("These values do not appear to be normally distributed.
+                       Original error message: ", e))
+      }
+
+    )
+
+
   }
 
   # make reagent lots separate elements in a list
