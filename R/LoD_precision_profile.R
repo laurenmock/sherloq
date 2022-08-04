@@ -27,7 +27,7 @@
 #' of this other variable here and set always_sep_lots = TRUE.
 #' @param col_sample Name (in quotes) of any column with unique values that correspond to each
 #' sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.
-#' @param col_avg Name (in quotes) of the column with measurements.
+#' @param col_avg Name (in quotes) of the column with mean measurements.
 #' @param col_sd_wl Name (in quotes) of the column with within-lab precision.
 #' @param LoB Limit of blank (LoB). Can be calculated using LoB function on data with
 #' blank samples.
@@ -74,7 +74,7 @@
 
 LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg, col_sd_wl,
                                       LoB, n_measures, n_samples = NULL,
-                                      model = c("lowest AIC", "linear", "quadratic", "sadler"),
+                                      model = c("lowestAIC", "linear", "quadratic", "sadler"),
                                       sadler_start = NULL, beta = 0.05, always_sep_lots = FALSE){
 
   model <- match.arg(model)
@@ -134,9 +134,8 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
     stopifnot("`sadler_start` must be NULL or a vector with three values (one for each
     coefficient in the Sadler model)" = length(sadler_start) == 3)
   } else if(model == "sadler" & is.null(sadler_start)){
-    stop("The Sadler model requires you to specify `sadler_start` to be three values
-    (one for each coefficient in the Sadler model). You must specify these values or
-         select a different model.")
+    stop("The Sadler model requires you to specify three starting coefficient values with
+    `sadler_start`. You must specify these values or select a different model.")
   }
 
   # percentile
@@ -170,8 +169,48 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
   # Sadler is finicky! only run if Sadler is selected by user
   if(model == "sadler"){
 
+    #if(is.null(sadler_start)){
+
+      # Sadler model form:
+      # cv = (c0 + c1*avg)^c2
+      # write out the exponent
+      # cv =
+      # take the log of both sides:
+      # log(cv) =
+
+
+    #-------------------------#
+
+    # lot1 <- df |> subset(lot == 1)
+    # lot1 <- LoD_PP_df |> subset(Reagent == 1)
+    # #lot2 <- df |> subset(lot == 2)
+    #
+    # model1 <- function(a, data) {
+    #   (a[1] + a[2]*data$avg)^(a[3])
+    # }
+    #
+    # measure_distance <- function(mod, data) {
+    #   diff <- data$sd_wl - model1(mod, data)
+    #   sqrt(mean(diff ^ 2))
+    # }
+    #
+    # best <- optim(c(1, 0, 15), measure_distance, data = lot1)
+    # best$par
+    #
+    # #---------#
+    #
+    # library(minpack.lm)
+    #
+    # fit <- nlsLM(SD_within_lab ~ a + b*Mean^c, data = lot1, start = list(a=1, b=1, c=1))
+    # summary(fit)
+    #
+    #
+    # #}
+
+
     tryCatch(
       expr = {
+
 
         sadler_mod <- lapply(lots_list, function(x)
           stats::nls(sd_wl ~ I((c0 + c1*avg)^c2), data = x,
@@ -218,7 +257,7 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
 
 
   # if user has selected a specific model (not lowest AIC)
-  if(model != "lowest AIC"){
+  if(model != "lowestAIC"){
     final_mod <- model
 
     # if the selected model also has the lowest AIC
@@ -260,7 +299,7 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
                 mgp = c(2, 0.5, 0),
                 tck = -.01)
   plot(1, type = "n",
-       main = "Check model fit", xlab = "Measurand", ylab = "Within-lab Precision", col = pal[1],
+       main = "Check model fit", xlab = "Mean measurement", ylab = "Within-lab Precision", col = pal[1],
        xlim = x_lims, ylim = y_lims, pch = 16)
 
   # new x values to plug into model
@@ -342,7 +381,7 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
   names(all_mods[[final_mod]]) <- paste0("lot_", 1:n_lots)
 
   output <- list(all_mods[[final_mod]], pred_df, mod_plot, LoD_vals)
-  names(output) <- c(paste0(final_mod, "_model"), "model_predictions", "model_plot", "LoD_values")
+  names(output) <- c("model", "model_predictions", "model_plot", "LoD_values")
 
   return(output)
 }

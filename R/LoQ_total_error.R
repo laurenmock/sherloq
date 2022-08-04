@@ -20,15 +20,15 @@
 #' To split the LoB results by any other variable (e.g. lab), simply include the name
 #' of this other variable here and set always_sep_lots = TRUE.
 #' @param col_sample Name (in quotes) of any column with unique values that correspond to each
-#' sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.
-#' @param col_ref Name (in quotes) of the column with reference/true values.
-#' @param col_value Name (in quotes) of the column with measurements.
+#' sample. Does not need to be numeric.
+#' @param col_ref Name (in quotes) of the column with reference/true/intended values.
+#' @param col_value Name (in quotes) of the column with observed measurements.
 #' @param accuracy_goal Desired maximum total error as a percentage between 0 and 100.
 #' @param always_sep_lots If FALSE, reagent lots are evaluated according to CLSI guidelines
 #' (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
 #' If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 #' Default is FALSE.
-#' @param plot_lm If TRUE, a linear model will be fit onto the plot of CV vs. measurand. FALSE
+#' @param plot_lm If TRUE, a linear model will be fit onto the plot of CV vs. measurement. FALSE
 #' (the default) will simply connect the points.
 #'
 #' @return Returns a list with a table of the total errors for each sample in each lot,
@@ -137,6 +137,7 @@ LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
 
   # re-order rows in sample_df
   sample_df <- sample_df[order(sample_df$lot, sample_df$sample),]
+  row.names(sample_df) <- NULL
 
   lots_list <- split(sample_df, f = sample_df$lot)
 
@@ -170,9 +171,15 @@ LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
 
   # add legend
   if(n_lots > 1){
-    labs <- paste0("Lot ", 1:n_lots)
-    graphics::legend("bottomleft", pch = 16, lty = 1, legend = labs,
-                     col = pal, cex = 0.7, bty = "n")
+    if(plot_lm){
+      labs <- c("Pooled", paste0("Lot ", 1:n_lots))
+      graphics::legend("bottomleft", pch = 16, lty = 1, legend = labs,
+                       col = c(1, pal[1:n_lots]), cex = 0.7, bty = "n")
+    }else{
+      labs <- paste0("Lot ", 1:n_lots)
+      graphics::legend("bottomleft", pch = 16, lty = 1, legend = labs,
+                       col = pal, cex = 0.7, bty = "n")
+    }
   }
 
   # # fit linear model across all lots and get fitted values

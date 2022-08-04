@@ -230,7 +230,7 @@ results <- LoD_precision_profile(df = LoD_PP_df,
                                  LoB = 0.51, 
                                  n_measures = 80*6)
 
-results$quadratic_model
+results$model
 
 results$LoD_values
 ```
@@ -262,7 +262,7 @@ results <- LoD_precision_profile(df = LoDdat_PP,
                                  LoB = 0, 
                                  n_measures = 149)
 
-results$linear_model
+results$model
 
 results$LoD_values
 ```
@@ -462,7 +462,6 @@ results <- LoQ_total_error(df = LoQ_TE_df,
                            accuracy_goal = 21.6)
 
 results$total_error_table |> 
-  `row.names<-`(NULL) |>
   knitr::kable()
 
 results$LoQ_values
