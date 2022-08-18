@@ -114,15 +114,15 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
 
   # rename columns in df
   names(df)[names(df) == col_lot] <- "lot"
-  names(df)[names(df) == col_avg] <- "avg"
-  names(df)[names(df) == col_sd_wl] <- "sd_wl"
+  names(df)[names(df) == col_avg] <- "Mean"
+  names(df)[names(df) == col_sd_wl] <- "SD_within_lab"
 
   # confirm that columns are numeric
   tryCatch(
     expr = {
       df$lot <- as.numeric(df$lot)
-      df$avg <- as.numeric(df$avg)
-      df$sd_wl <- as.numeric(df$sd_wl)
+      df$Mean <- as.numeric(df$Mean)
+      df$SD_within_lab <- as.numeric(df$SD_within_lab)
     },
     warning = function(w){
       stop("`col_lot`, `col_avg`, and `col_sd_wl` must be numeric")
@@ -157,10 +157,10 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
   #----- precision models -----#
 
   # linear
-  lin_mod <- lapply(lots_list, function(x) stats::lm(sd_wl ~ avg, data = x))
+  lin_mod <- lapply(lots_list, function(x) stats::lm(SD_within_lab ~ Mean, data = x))
 
   # quadratic
-  quad_mod <- lapply(lots_list, function(x) stats::lm(sd_wl ~ avg + I(avg^2), data = x))
+  quad_mod <- lapply(lots_list, function(x) stats::lm(SD_within_lab ~ Mean + I(Mean^2), data = x))
 
   mod_names <- c("linear", "quadratic")
   all_mods <- list(lin_mod, quad_mod) |> stats::setNames(mod_names)
@@ -172,7 +172,7 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
     #if(is.null(sadler_start)){
 
       # Sadler model form:
-      # cv = (c0 + c1*avg)^c2
+      # cv = (c0 + c1*Mean)^c2
       # write out the exponent
       # cv =
       # take the log of both sides:
@@ -186,11 +186,11 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
     # #lot2 <- df |> subset(lot == 2)
     #
     # model1 <- function(a, data) {
-    #   (a[1] + a[2]*data$avg)^(a[3])
+    #   (a[1] + a[2]*data$Mean)^(a[3])
     # }
     #
     # measure_distance <- function(mod, data) {
-    #   diff <- data$sd_wl - model1(mod, data)
+    #   diff <- data$SD_within_lab - model1(mod, data)
     #   sqrt(mean(diff ^ 2))
     # }
     #
@@ -213,7 +213,7 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
 
 
         sadler_mod <- lapply(lots_list, function(x)
-          stats::nls(sd_wl ~ I((c0 + c1*avg)^c2), data = x,
+          stats::nls(SD_within_lab ~ I((c0 + c1*Mean)^c2), data = x,
                      start = list(c0 = sadler_start[1],
                                   c1 = sadler_start[2],
                                   c2 = sadler_start[3])))
@@ -285,8 +285,8 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
   #----- plot precision profiles -----#
 
   # set x and y limits for plot
-  x_lims <- c(min(min(df$avg), LoB), max(df$avg))
-  y_lims <- c(min(df$sd_wl), max(df$sd_wl))
+  x_lims <- c(min(min(df$Mean), LoB), max(df$Mean))
+  y_lims <- c(min(df$SD_within_lab), max(df$SD_within_lab))
 
   # color blind safe palette
   pal <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
@@ -306,18 +306,18 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
   new_vals <- seq(from = x_lims[1], to = x_lims[2], length = 20)
   # model predictions
   new_preds <- lapply(1:n_lots, function(x) stats::predict(all_mods[[final_mod]][[x]], new_vals |>
-                                                             as.data.frame() |> stats::setNames("avg")))
+                                                             as.data.frame() |> stats::setNames("Mean")))
 
   # save model predictions in a data frame
   pred_df <- unlist(new_preds) |> as.data.frame() |> stats::setNames("sd_pred")
   pred_df$lot <- rep(1:n_lots, each = length(new_vals))
-  pred_df$avg <- rep(new_vals, times = n_lots)
+  pred_df$Mean <- rep(new_vals, times = n_lots)
   pred_df <- pred_df[,c(2,1,3)]
-  pred_df <- pred_df[,c("lot", "avg", "sd_pred")]
+  pred_df <- pred_df[,c("lot", "Mean", "sd_pred")]
 
 
   # draw observed data and model predictions
-  temp <- lapply(1:n_lots, function(x) graphics::points(lots_list[[x]]$avg, lots_list[[x]]$sd_wl,
+  temp <- lapply(1:n_lots, function(x) graphics::points(lots_list[[x]]$Mean, lots_list[[x]]$SD_within_lab,
                                                         col = pal[x], pch = 16))
   temp <- lapply(1:n_lots, function(x) graphics::lines(new_vals, new_preds[[x]],
                                                        col = pal[x], lty = 2))
@@ -350,9 +350,9 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
     cp <- stats::qnorm(pct) / (1 - (1/(4*(n_measures - n_samples)) ))
 
     # predict within-lab precision across various measurement concentrations
-    trial_mc <- seq(from = LoB, to = stats::median(df$avg), by = .001)
+    trial_mc <- seq(from = min(0, LoB), to = max(df$Mean), by = .001)
     trial_sd <- stats::predict(all_mods[[final_mod]][[l]],
-                               newdata = trial_mc |> as.data.frame() |> stats::setNames("avg"))
+                               newdata = trial_mc |> as.data.frame() |> stats::setNames("Mean"))
 
     # caculate LoD and bias for each trial
     trial_LoD <- LoB + cp*trial_sd
@@ -380,8 +380,11 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
   # add names to make output easier to read
   names(all_mods[[final_mod]]) <- paste0("lot_", 1:n_lots)
 
+  # nicer names for pred_df
+  names(pred_df) <- c("Reagent", "Mean", "SD_within_lab")
+
   output <- list(all_mods[[final_mod]], pred_df, mod_plot, LoD_vals)
-  names(output) <- c("model", "model_predictions", "model_plot", "LoD_values")
+  names(output) <- c("model", "plot_data", "plot", "LoD_values")
 
   return(output)
 }

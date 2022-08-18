@@ -158,9 +158,13 @@ LoB <- function(df, col_lot = NULL, col_sample, col_value,
     # sort measurements
     sorted <- lapply(lots_list, function(x) sort(x$val))
 
-    # don't let rank_above be higher than the length of the sorted data
-    rank_above <- sapply(1:n_lots, function(x)
-      ifelse(rank_above[x] > length(sorted[[x]]), length(sorted[[x]]), rank_above))
+    # NOTE: If there are too few measurements, rank_above will be greater than the number of
+    # measurements, and you will not be able to interpolate the value at the rank_above quantile.
+    # CLSI guidelines do not address this potential problem.
+    # If this is the case, this function replaces rank_above with the number of measurements.
+    rank_above <- sapply(1:n_lots, function(x) ifelse(rank_above[x] > length(sorted[[x]]),
+                                                      length(sorted[[x]]),
+                                                      rank_above))
 
     # interpolate measurement for exact rank position (LoB)
     LoB_vals <- sapply(1:n_lots, function(l) sorted[[l]][rank_below[l]] +
@@ -231,7 +235,7 @@ LoB <- function(df, col_lot = NULL, col_sample, col_value,
 
   # report LoB values and plot
   output <- list(LoB_plot, as.list(LoB_vals))
-  names(output) <- c("LoB_plot", "LoB_values")
+  names(output) <- c("plot", "LoB_values")
 
   # return list of LoB values
   return(output)

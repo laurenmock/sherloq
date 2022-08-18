@@ -7,17 +7,10 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include=FALSE}
-library(sherloq)
-```
+**`{sherloq}` is an R package for detection capability calculations. It contains 6 functions based on CLSI EP17 guidelines**:
 
-
-**`{sherloq}` is an R package that contains six functions for detection capability calculations**:
-
-- Limit of Blank (LoB)
-    1. Classical
-        - Non-parametric
-        - Parametric
+- Limit of Blank (LoB):
+    1. Classical (non-parametric & parametric)
 - Limit of Detection (LoD)
     2. Classical
     3. Precision profile
@@ -26,28 +19,17 @@ library(sherloq)
     5. Functional sensitivity
     6. Total error
 
-- Functions based on CLSI EP17 (Detection Capability) guidelines
-- Adjusted to fit MTM calibration DEV data
-- I'll demonstrate how these function work on the example data and the DEV data
+This vignette includes demonstrations of each `{sherloq}` function using CLSI EP17 example data, which can be found in the CLSI EP17 appendix. The LoB, LoD_precision_profile, LoD_probit, and LoQ_total_error functions are also demonstrated using MTM Calibration DEV data obtained from the DEV_Linearity_Precision_LoD.Rmd file in the mtm.calibration package. The exact line numbers from which these data are pulled is included in each example below.
+
+```{r setup}
+# load sherloq package
+library(sherloq)
+```
 
 
-# How can we use this R package?  
-- Not intended to replace all manual analysis
-    - Limit on flexibility of these functions
-- But could be useful for:
-    - Getting a quick estimate of LoB/LoD/LoQ
-    - Checking results calculated manually
-    - Referencing code
-    - Standardizing LoB/LoD/LoQ calculations at Natera
-    
-**Note**: These calculations may sound straightforward, but they often aren't! Using slightly different methods could lead to substantially different results.
+# LoB
 
-
-# Limit of Blank (LoB)
-
-**LoB**: Largest measurement (e.g. VAF) we might expect to obtain from a blank sample
-
-Example data (CLSI EP17 Appendix A):
+**Example data (CLSI EP17 Appendix A):**
 
 ```{r, echo = FALSE}
 
@@ -86,7 +68,8 @@ LoB_df <- data.frame(Reagent = c(rep(1, 12*5), rep(2, 12*5)),
                                    1.6, 2.6, 6.4, 5.7,
                                    4.2, 3.7, 1.4, 1.5))
 
-head(LoB_df, 10) |> knitr::kable()
+head(LoB_df, 10) |> 
+  knitr::kable()
 ```
 
 Use the `{sherloq}` LoB function:
@@ -96,23 +79,25 @@ results <- LoB(df = LoB_df,
                col_lot = "Reagent", 
                col_sample = "Sample", 
                col_value = "Measurement"
-               # parametric = TRUE
                )
 
+# get LoB values
 results$LoB_values
 ```
 
 <br>
 
-MTM Calibration DEV data:
+**MTM Calibration DEV data:**  
 (obtained from DEV_Linearity_Precision_LoD.Rmd, line 63)
 
 ```{r, echo = FALSE}
-data(LoBdat)
+data(mtm.cal_LoB_dat)
 
 LoBdat <- LoBdat |>
   subset(select = c(IntendedVAF, ObsVAF, Reagent, Rep, Day, SampleCall, PlasmaSampleNumber))
-head(LoBdat, 10) |> knitr::kable()
+
+head(LoBdat, 10) |> 
+  knitr::kable()
 ```
 
 Use the `{sherloq}` LoB function:
@@ -123,6 +108,7 @@ results <- LoB(df = LoBdat,
                col_sample = "PlasmaSampleNumber", 
                col_value = "ObsVAF")
 
+# get LoB values
 results$LoB_values
 ```
 
@@ -137,14 +123,9 @@ Additional features of this function:
 
 
 
-# Limit of Detection (LoD)
+# LoD (Classical)
 
-**LoD**: Lowest concentration of analyte that we can consistently detect
-
-
-**Classical Approach**
-
-Example data (CLSI EP17 Appendix A):
+**Example data (CLSI EP17 Appendix A):**
 
 ```{r, echo = FALSE}
 LoD_C_df <- data.frame(Reagent = c(rep(1, 12*5), rep(2, 12*5)),
@@ -181,7 +162,8 @@ LoD_C_df <- data.frame(Reagent = c(rep(1, 12*5), rep(2, 12*5)),
                                     32.9, 30.4, 29.4, 27.6,
                                     27.7, 30.6, 31.4, 30.4,
                                     32.5, 28.9, 29.8, 35.1))
-head(LoD_C_df, 10) |> knitr::kable()
+head(LoD_C_df, 10) |> 
+  knitr::kable()
 ```
 
 
@@ -193,7 +175,9 @@ results <- LoD_classical(df = LoD_C_df,
                          col_sample = "Sample", 
                          col_value = "Measurement", 
                          LoB = 7.5)
-results
+
+# get LoD values
+results$LoD_values
 ```
 
 Additional features of this function:
@@ -205,9 +189,9 @@ Additional features of this function:
 
 <br>
 
-**Precision Profile Approach**
+# LoD (Precision Profile)
 
-Example data (CLSI EP17 Appendix B):
+**Example data (CLSI EP17 Appendix B):**
 
 ```{r, echo = FALSE}
 LoD_PP_df <- data.frame(Reagent = c(rep(1, 6), rep(2, 6)),
@@ -216,7 +200,8 @@ LoD_PP_df <- data.frame(Reagent = c(rep(1, 6), rep(2, 6)),
                                 .78, 1.73, 2.89, 3.82, 6.33, 10.92),
                        SD_within_lab = c(.39, .39, .46, .55, .64, 1.12, 
                                          .29, .54, .55, .63, .82, 1.38))
-LoD_PP_df |> knitr::kable()
+LoD_PP_df |> 
+  knitr::kable()
 ```
 
 Use the `{sherloq}` LoD_precision_profile function:
@@ -230,18 +215,27 @@ results <- LoD_precision_profile(df = LoD_PP_df,
                                  LoB = 0.51, 
                                  n_measures = 80*6)
 
-results$model
-
+# get LoD values
 results$LoD_values
+
+# get model coefficients from model objects
+results$model |>
+  lapply(function(x) summary(x)$coef)
+
+# see head of table to recreate plot
+results$plot_data |>
+  head(10) |>
+  knitr::kable()
+
 ```
 
 <br>
 
-MTM Calibration DEV data:
+**MTM Calibration DEV data:**  
 (obtained from DEV_Linearity_Precision_LoD.Rmd, line 390)
 
 ```{r, echo = FALSE}
-data(LoDdat_PP)
+data(mtm.cal_LoD_precision_profile_dat)
 
 LoDdat_PP <- LoDdat_PP |>
   subset(DataType == "Mixed Model" & PrecType == "Reproducibility",
@@ -262,13 +256,19 @@ results <- LoD_precision_profile(df = LoDdat_PP,
                                  LoB = 0, 
                                  n_measures = 149)
 
-results$model
-
+# get LoD values
 results$LoD_values
+
+# get model coefficients from model objects
+results$model |>
+  lapply(function(x) summary(x)$coef)
+
+# see head of data to recreate plot
+results$plot_data |>
+  head(10) |>
+  knitr::kable()
+
 ```
-
-This function produces an LoD of 0.057, while the LoD calculated in the DEV study was 0.051. They use different models to explain within-lab precision as a function of observed VAF.
-
 
 Additional features of this function:
 
@@ -281,9 +281,9 @@ Additional features of this function:
 
 <br>
 
-**Probit Approach**
+# LoD (Probit)
 
-Example data (CLSI EP17 Appendix C):
+**Example data (CLSI EP17 Appendix C):**
 
 ```{r, echo = FALSE}
 LoD_P_df <- data.frame(Concentration = rep(c(0, .006, .014, .025, .05, .15, .3, .5), each = 3),
@@ -301,7 +301,8 @@ LoD_P_df <- data.frame(Concentration = rep(c(0, .006, .014, .025, .05, .15, .3, 
                                        30, 30, 34,
                                        rep(32, 15)))
 
-head(LoD_P_df, 10) |> knitr::kable()
+head(LoD_P_df, 10) |> 
+  knitr::kable()
 ```
 
 Use `{sherloq}` LoD_probit function:
@@ -309,65 +310,87 @@ Use `{sherloq}` LoD_probit function:
 ```{r}
 results <- LoD_probit(df = LoD_P_df, 
                       col_lot = "Reagent", 
-                      col_conc = "Concentration", 
+                      col_true_conc = "Concentration", 
                       col_obs_pos = "Observed_Positives", 
                       col_tot = "Total_Calls", 
                       LoB = 0)
 
-results$probit_model
-
+# get LoD values
 results$LoD_values
+
+# get model coefficients from model objects
+results$model |>
+  lapply(function(x) summary(x)$coef)
+
+# see head of table to recreate plot
+results$plot_data |>
+  head(10) |>
+  knitr::kable()
 ```
 
 
-MTM Calibration DEV data:
+**MTM Calibration DEV data:**  
 (obtained from DEV_Linearity_Precision_LoD.Rmd, line 332)
 
 ```{r, echo = FALSE}
-data(LoDdat_P)
+data(mtm.cal_LoD_probit_dat)
 
 LoDdat_P <- LoDdat_P |>
-  subset(select = c(IntendedVAF, MeanObsVAF, Reagent, SampleCall))
+  subset(select = c(IntendedVAF, ObsVAF, Reagent, SampleCall))
 
-head(LoDdat_P, 10) |> knitr::kable()
+head(LoDdat_P, 10) |> 
+  knitr::kable()
 ```
 
 This data is in a different format, but the LoD_probit function can also handle this data structure. We just specify `col_01` instead of `col_obs_pos` and `col_tot`.
+
+The DEV study code does not separate reagent lots, so we will pool all lots together with col_lot = NULL.
 
 Use the `{sherloq}` LoD_probit function:
 
 ```{r}
 results <- LoD_probit(df = LoDdat_P, 
                       col_lot = NULL, 
-                      col_conc = "MeanObsVAF",
+                      col_true_conc = "IntendedVAF",
                       col_01 = "SampleCall", 
                       LoB = 0)
 
-results$probit_model
-
+# get LoD values
 results$LoD_values
+
+# get model coefficients from model objects
+results$model |>
+  lapply(function(x) summary(x)$coef)
+
+# see head of table to recreate plot
+results$plot_data |>
+  head(10) |>
+  knitr::kable()
+
 ```
 
-Note: my function produced the same result for LoD as the DEV study code--0.0541.
-
 According to CLSI guidelines, LoD should be calculated separately for each lot. What happens if we separate by lot?
-
 
 ```{r}
 results <- LoD_probit(df = LoDdat_P, 
                       col_lot = "Reagent", 
-                      col_conc = "MeanObsVAF",
+                      col_true_conc = "IntendedVAF",
                       col_01 = "SampleCall",
                       LoB = 0, 
                       log10_trans = TRUE)
 
-results$probit_model
-
+# get LoD values
 results$LoD_values
+
+# get model coefficients from model objects
+results$model |>
+  lapply(function(x) summary(x)$coef)
+
+# see head of table to recreate plot
+results$plot_data |>
+  head(10) |>
+  knitr::kable()
 ```
-
-When we separate by lot, we get an LoD of 0.0981 (compared to the previous LoD of 0.0541).
-
 
 Additional features of this function:
 
@@ -381,14 +404,9 @@ Additional features of this function:
 
 <br>
 
-# Limit of Quantitation (LoQ)
+# LoQ (Functional Sensitivity)
 
-**LoQ**: Lowest concentration of analyte that we can determine quantitatively with some level of accuracy
-
-
-**Functional Sensitivity Approach**
-
-Example data (CLSI EP17 Appendix D1):
+**Example data (CLSI EP17 Appendix D1):**
 
 ```{r, echo = FALSE}
 LoQ_F_df <- data.frame(Reagent = rep(c(1, 2), each = 9),
@@ -410,9 +428,13 @@ results <- LoQ_functional(df = LoQ_F_df,
                           col_sd_wl = "SD_within_lab", 
                           target_cv = 10)
 
-results$model
-
+# get LoQ values
 results$LoQ_values
+
+# get model coefficients from model objects
+results$model |>
+  lapply(function(x) summary(x)$coef)
+
 ```
 
 Additional features of this function:
@@ -427,9 +449,9 @@ Additional features of this function:
 
 <br>
 
-**Total Error (Westgard) Approach**
+# LoQ (Total Error)
 
-Example data (CLSI EP17 Appendix D2):
+**Example data (CLSI EP17 Appendix D2):**
 
 ```{r, echo = FALSE}
 LoQ_TE_df <- data.frame(Reagent = c(rep(1, 9*5), rep(2, 9*5)),
@@ -461,20 +483,24 @@ results <- LoQ_total_error(df = LoQ_TE_df,
                            col_value = "Measurement", 
                            accuracy_goal = 21.6)
 
+# get LoQ values
+results$LoQ_values
+
+# get total error table
 results$total_error_table |> 
   knitr::kable()
 
-results$LoQ_values
 ```
 
-MTM Calibration DEV data:
+**MTM Calibration DEV data:**  
 (obtained from DEV_Linearity_Precision_LoD.Rmd, line 590)
 
 ```{r, echo = FALSE}
-data(LoQdat)
+data(mtm.cal_LoQ_total_error_dat)
 
 LoQdat <- LoQdat |>
   subset(select = c(IntendedVAF, ObsVAF, Reagent))
+
 head(LoQdat, 10) |> knitr::kable()
 ```
 
@@ -487,16 +513,17 @@ results <- LoQ_total_error(df = LoQdat,
                            col_ref = "IntendedVAF", 
                            col_value = "ObsVAF", 
                            accuracy_goal = 50)
+# get LoQ values
+results$LoQ_values
 
-results$total_error_table |>
-  `row.names<-`(NULL) |>
+# get total error table
+results$total_error_table |> 
   knitr::kable()
 
-
-results$LoQ_values
 ```
 
-The LoQ reported with an accuracy goal of 50% is `r round(results$LoQ_values$reported, 4)`. We can use the plot and the table with total error percentage to select a new `accuracy_goal`. 
+We must choose an initial accuracy goal, but we can easily use the plot and the table with total error percentage to select a new `accuracy_goal` if we would like to do so. 
+
 
 Additional features of this function:
 

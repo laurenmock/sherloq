@@ -260,9 +260,7 @@ LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
   output <- list(sample_df,
                  #lin_mod,
                  te_plot, LoQ_vals)
-  names(output) <- c("total_error_table",
-                     #"linear_model",
-                     "total_error_plot", "LoQ_values")
+  names(output) <- c("total_error_table", "plot", "LoQ_values")
 
   return(output)
 }

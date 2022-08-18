@@ -13,7 +13,7 @@ LoD_precision_profile(
   LoB,
   n_measures,
   n_samples = NULL,
-  model = c("lowest AIC", "linear", "quadratic", "sadler"),
+  model = c("lowestAIC", "linear", "quadratic", "sadler"),
   sadler_start = NULL,
   beta = 0.05,
   always_sep_lots = FALSE
@@ -30,7 +30,7 @@ of this other variable here and set always_sep_lots = TRUE.}
 \item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
 sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.}
 
-\item{col_avg}{Name (in quotes) of the column with measurements.}
+\item{col_avg}{Name (in quotes) of the column with mean measurements.}
 
 \item{col_sd_wl}{Name (in quotes) of the column with within-lab precision.}
 

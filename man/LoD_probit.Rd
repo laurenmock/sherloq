@@ -7,7 +7,7 @@
 LoD_probit(
   df,
   col_lot = NULL,
-  col_conc,
+  col_true_conc,
   col_01 = NULL,
   col_obs_pos = NULL,
   col_tot = NULL,
@@ -27,7 +27,7 @@ and a column with the number of total calls at that level.}
 To split the LoD results by any other variable (e.g. lab), simply include the name
 of this other variable here and set always_sep_lots = TRUE.}
 
-\item{col_conc}{Name (in quotes) of the column with the concentration.}
+\item{col_true_conc}{Name (in quotes) of the column with the true/intended concentration.}
 
 \item{col_01}{Name (in quotes) of the column with 0s and 1s for negative and positive results.
 Should be NULL if col_obs_pos and col_tot are provided.}
@@ -95,7 +95,7 @@ LoD_P_df <- data.frame(Concentration, Reagent, Observed_Positives, Total_Calls)
 
 results <- LoD_probit(df = LoD_P_df,
                       col_lot = "Reagent",
-                      col_conc = "Concentration",
+                      col_true_conc = "Concentration",
                       col_obs_pos = "Observed_Positives",
                       col_tot = "Total_Calls",
                       LoB = 0)

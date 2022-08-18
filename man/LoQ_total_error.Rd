@@ -23,11 +23,11 @@ To split the LoB results by any other variable (e.g. lab), simply include the na
 of this other variable here and set always_sep_lots = TRUE.}
 
 \item{col_sample}{Name (in quotes) of any column with unique values that correspond to each
-sample. Can be NULL (default) if n_samples is provided. Does not need to be numeric.}
+sample. Does not need to be numeric.}
 
-\item{col_ref}{Name (in quotes) of the column with reference/true values.}
+\item{col_ref}{Name (in quotes) of the column with reference/true/intended values.}
 
-\item{col_value}{Name (in quotes) of the column with measurements.}
+\item{col_value}{Name (in quotes) of the column with observed measurements.}
 
 \item{accuracy_goal}{Desired maximum total error as a percentage between 0 and 100.}
 
@@ -36,7 +36,7 @@ sample. Can be NULL (default) if n_samples is provided. Does not need to be nume
 If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 Default is FALSE.}
 
-\item{plot_lm}{If TRUE, a linear model will be fit onto the plot of CV vs. measurand. FALSE
+\item{plot_lm}{If TRUE, a linear model will be fit onto the plot of CV vs. measurement. FALSE
 (the default) will simply connect the points.}
 }
 \value{

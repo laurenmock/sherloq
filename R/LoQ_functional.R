@@ -260,6 +260,12 @@ LoQ_functional <- function(df, col_lot = NULL, col_avg, col_sd_wl, target_cv,
   # save plot
   mod_plot <- grDevices::recordPlot()
 
+  # get data from plot into a table for output
+  pred_df <- unlist(new_preds) |> as.data.frame() |> stats::setNames("CV")
+  pred_df$Reagent <- rep(1:n_lots, each = length(new_vals))
+  pred_df$Measurand <- rep(new_vals, times = n_lots)
+  pred_df <- pred_df[,c(2,1,3)]
+  pred_df <- pred_df[,c("Reagent", "Measurand", "CV")]
 
   # reporting LoQ
   if(always_sep_lots & length(LoQ_vals) > 3){
@@ -280,8 +286,8 @@ LoQ_functional <- function(df, col_lot = NULL, col_avg, col_sd_wl, target_cv,
   # add names to make output easier to read
   names(mods) <- paste0("lot_", 1:n_lots)
 
-  output <- list(mods, mod_plot, LoQ_vals)
-  names(output) <- c("model", "model_plot", "LoQ_values")
+  output <- list(mods, pred_df, mod_plot, LoQ_vals)
+  names(output) <- c("model", "plot_data", "plot", "LoQ_values")
 
   return(output)
 }

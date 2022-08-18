@@ -208,7 +208,7 @@ LoD_classical <- function(df, col_lot = NULL, col_sample, col_value, LoB, beta =
 
   # report LoD values and plot
   output <- list(LoD_plot, as.list(LoD_vals))
-  names(output) <- c("LoD_plot", "LoD_values")
+  names(output) <- c("plot", "LoD_values")
 
   return(output)
 }

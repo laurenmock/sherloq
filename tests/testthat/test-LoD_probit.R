@@ -28,7 +28,7 @@ LoD_P_df$Concentration_sparse <- ifelse(LoD_P_df$Concentration %in% c(0.006, 0.0
                                         NA, LoD_P_df$Concentration)
 
 # df that isn't aggregated yet (DEV data)
-data(LoDdat_P)
+data(mtm.cal_LoD_probit_dat)
 
 # df that isn't aggregated and has 1s and 2s instead of 0s and 1s
 LoDdat_P$SampleCall_bad <- LoDdat_P$SampleCall + 1
@@ -39,7 +39,7 @@ LoDdat_P$SampleCall_bad <- LoDdat_P$SampleCall + 1
 test_that("LoD (probit) values are correct", {
   expect_equal(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_obs_pos = "Observed_Positives",
                           col_tot = "Total_Calls",
                           LoB = 0)$LoD_values$lot_1,
@@ -47,7 +47,7 @@ test_that("LoD (probit) values are correct", {
                tolerance = 0.001)
   expect_equal(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_obs_pos = "Observed_Positives",
                           col_tot = "Total_Calls",
                           LoB = 0)$LoD_values$lot_2,
@@ -55,7 +55,7 @@ test_that("LoD (probit) values are correct", {
                tolerance = 0.001)
   expect_equal(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_obs_pos = "Observed_Positives",
                           col_tot = "Total_Calls",
                           LoB = 0)$LoD_values$reported,
@@ -67,7 +67,7 @@ test_that("LoD (probit) values are correct", {
 test_that("can set col_lot = NULL to pool all lots", {
   expect_warning(LoD_probit(df = LoD_P_df,
                             col_lot = NULL,
-                            col_conc = "Concentration",
+                            col_true_conc = "Concentration",
                             col_obs_pos = "Observed_Positives",
                             col_tot = "Total_Calls",
                             LoB = 0))
@@ -77,7 +77,7 @@ test_that("can set col_lot = NULL to pool all lots", {
 test_that("properly pools lots when there are >3 lots", {
   expect_equal(suppressWarnings(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent4",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_obs_pos = "Observed_Positives",
                           col_tot = "Total_Calls",
                           LoB = 0))$LoD_values$reported,
@@ -89,7 +89,7 @@ test_that("properly pools lots when there are >3 lots", {
 test_that("can change beta", {
   expect_equal(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_obs_pos = "Observed_Positives",
                           col_tot = "Total_Calls",
                           LoB = 0,
@@ -102,7 +102,7 @@ test_that("can change beta", {
 test_that("can do a log10 transformation", {
   expect_equal(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_obs_pos = "Observed_Positives",
                           col_tot = "Total_Calls",
                           LoB = 0,
@@ -115,7 +115,7 @@ test_that("can do a log10 transformation", {
 test_that("warning if a log10 transformation would be better", {
   w <- capture_warnings((LoD_probit(df = LoD_P_df,
                                     col_lot = "Reagent4",
-                                    col_conc = "Concentration",
+                                    col_true_conc = "Concentration",
                                     col_obs_pos = "Observed_Positives",
                                     col_tot = "Total_Calls",
                                     LoB = 0,
@@ -127,7 +127,7 @@ test_that("warning if a log10 transformation would be better", {
 test_that("warning if >3 lots and always_sep_lots = TRUE", {
   w <- capture_warnings((LoD_probit(df = LoD_P_df,
                                     col_lot = "Reagent4",
-                                    col_conc = "Concentration",
+                                    col_true_conc = "Concentration",
                                     col_obs_pos = "Observed_Positives",
                                     col_tot = "Total_Calls",
                                     LoB = 0,
@@ -139,7 +139,7 @@ test_that("warning if >3 lots and always_sep_lots = TRUE", {
 test_that("warning if the probit fit doesn't pass GOF test", {
   w <- capture_warnings((LoD_probit(df = LoD_P_df,
                                     col_lot = "Reagent4",
-                                    col_conc = "Concentration",
+                                    col_true_conc = "Concentration",
                                     col_obs_pos = "Observed_Positives",
                                     col_tot = "Total_Calls",
                                     LoB = 0,
@@ -151,7 +151,7 @@ test_that("warning if the probit fit doesn't pass GOF test", {
 test_that("warning if at least one model doesn't converge", {
   w <- capture_warnings((LoD_probit(df = LoD_P_df,
                                     col_lot = "Reagent",
-                                    col_conc = "Concentration_sparse",
+                                    col_true_conc = "Concentration_sparse",
                                     col_obs_pos = "Observed_Positives",
                                     col_tot = "Total_Calls",
                                     LoB = 0)))
@@ -162,25 +162,25 @@ test_that("warning if at least one model doesn't converge", {
 test_that("error if column names aren't in df", {
   expect_error(LoD_probit(df = LoD_P_df,
                           col_lot = "lot",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_obs_pos = "Observed_Positives",
                           col_tot = "Total_Calls",
                           LoB = 0))
   expect_error(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "conc",
+                          col_true_conc = "conc",
                           col_obs_pos = "Observed_Positives",
                           col_tot = "Total_Calls",
                           LoB = 0))
   expect_error(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_obs_pos = "obs_pos",
                           col_tot = "Total_Calls",
                           LoB = 0))
   expect_error(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_obs_pos = "Observed_Positives",
                           col_tot = "tot",
                           LoB = 0))
@@ -190,7 +190,7 @@ test_that("error if column names aren't in df", {
 test_that("warning if missing data in relevant columns", {
   w <- capture_warnings(LoD_probit(df = LoD_P_df,
                                    col_lot = "Reagent",
-                                   col_conc = "Concentration_NA",
+                                   col_true_conc = "Concentration_NA",
                                    col_obs_pos = "Observed_Positives",
                                    col_tot = "Total_Calls",
                                    LoB = 0))
@@ -201,30 +201,30 @@ test_that("warning if missing data in relevant columns", {
 test_that("error if wrong combination of col_01, col_obs_pos, and col_tot are provided", {
   expect_error(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_tot = "Total_Calls",
                           LoB = 0))
   expect_error(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_obs_pos = "Observed_Positives",
                           LoB = 0))
   expect_error(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_01 = "Total_Calls",
                           col_obs_pos = "Observed_Positives",
                           col_tot = "Total_Calls",
                           LoB = 0))
   expect_error(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           col_01 = "Total_Calls",
                           col_obs_pos = "Observed_Positives",
                           LoB = 0))
   expect_error(LoD_probit(df = LoD_P_df,
                           col_lot = "Reagent",
-                          col_conc = "Concentration",
+                          col_true_conc = "Concentration",
                           LoB = 0))
 })
 
@@ -232,7 +232,7 @@ test_that("error if wrong combination of col_01, col_obs_pos, and col_tot are pr
 test_that("works on unaggregated data (0s and 1s)", {
   expect_equal(LoD_probit(df = LoDdat_P,
                           col_lot = NULL,
-                          col_conc = "MeanObsVAF",
+                          col_true_conc = "MeanObsVAF",
                           col_01 = "SampleCall",
                           LoB = 0)$LoD_values$reported,
                0.0541,
@@ -243,7 +243,7 @@ test_that("works on unaggregated data (0s and 1s)", {
 test_that("error if col_01 has values other than 0 and 1", {
   expect_error(LoD_probit(df = LoDdat_P,
                           col_lot = NULL,
-                          col_conc = "MeanObsVAF",
+                          col_true_conc = "MeanObsVAF",
                           col_01 = "SampleCall_bad",
                           LoB = 0))
 })

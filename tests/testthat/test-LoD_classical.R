@@ -36,21 +36,21 @@ test_that("LoD (classical) values are correct", {
                              col_lot = "Reagent",
                              col_sample = "Sample",
                              col_value = "Measurement",
-                             LoB = 7.5)$lot_1,
+                             LoB = 7.5)$LoD_values$lot_1,
                12.64,
                tolerance = 0.001)
   expect_equal(LoD_classical(df = LoD_C_df,
                              col_lot = "Reagent",
                              col_sample = "Sample",
                              col_value = "Measurement",
-                             LoB = 7.5)$lot_2,
+                             LoB = 7.5)$LoD_values$lot_2,
                11.94,
                tolerance = 0.001)
   expect_equal(LoD_classical(df = LoD_C_df,
                              col_lot = "Reagent",
                              col_sample = "Sample",
                              col_value = "Measurement",
-                             LoB = 7.5)$reported,
+                             LoB = 7.5)$LoD_values$reported,
                12.64,
                tolerance = 0.001)
 })
@@ -61,7 +61,7 @@ test_that("can set col_lot = NULL to pool all lots", {
                              col_lot = NULL,
                              col_sample = "Sample",
                              col_value = "Measurement",
-                             LoB = 7.5)$reported,
+                             LoB = 7.5)$LoD_values$reported,
                13.00,
                tolerance = 0.001)
 })
@@ -72,7 +72,7 @@ test_that("properly pools lots when there are >3 lots", {
                              col_lot = "Reagent4",
                              col_sample = "Sample",
                              col_value = "Measurement",
-                             LoB = 7.5)$reported,
+                             LoB = 7.5)$LoD_values$reported,
                13.00,
                tolerance = 0.001)
 })
@@ -84,7 +84,7 @@ test_that("can change beta", {
                              col_sample = "Sample",
                              col_value = "Measurement",
                              LoB = 7.5,
-                             beta = 0.01)$reported,
+                             beta = 0.01)$LoD_values$reported,
                14.773,
                tolerance = 0.001)
 })

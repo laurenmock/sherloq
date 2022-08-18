@@ -11,7 +11,8 @@ LoD_classical(
   col_value,
   LoB,
   beta = 0.05,
-  always_sep_lots = FALSE
+  always_sep_lots = FALSE,
+  plot = c("boxplot", "histogram")
 )
 }
 \arguments{
@@ -35,6 +36,9 @@ sample. Does not need to be numeric.}
 (all lots evaluated separately if 2 or 3 lots, and all lots evaluated together if >3 lots).
 If TRUE, all reagent lots are evaluated separately regardless of the number of lots.
 Default is FALSE.}
+
+\item{plot}{User can select to view either a box plot (default) or a histogram of all
+measurement values, split by reagent lot.}
 }
 \value{
 Returns a list with the limit of detection (LoD) value(s) for each reagent lot
