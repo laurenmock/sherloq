@@ -204,6 +204,7 @@ LoB <- function(df, col_lot = NULL, col_sample, col_value,
 
   # make box plot or histogram
   graphics::plot.new()
+  dev.control("enable")
 
   graphics::par(mfrow = c(1, n_lots),
                 mar = c(3, 3, 2, 1),
@@ -232,6 +233,7 @@ LoB <- function(df, col_lot = NULL, col_sample, col_value,
   }
 
   LoB_plot <- grDevices::recordPlot()
+  dev.off()
 
   # report LoB values and plot
   output <- list(LoB_plot, as.list(LoB_vals))
