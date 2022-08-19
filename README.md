@@ -27,13 +27,3 @@
 
 
 
-
-## Installation
-
-You can install the development version of detection like so:
-
-``` r
-devtools::install_git("https://stash.natera.com/projects/BIOS/repos/biostatistics_detection_capability.git")
-
-
-
