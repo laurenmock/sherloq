@@ -131,6 +131,8 @@ LoQ_functional <- function(df, col_lot = NULL, col_avg, col_sd_wl, target_cv,
   pal <- c("#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
   graphics::plot.new()
+  dev.control("enable")
+
   graphics::par(mfrow = c(1,1),
                 mar = c(3, 3, 2, 1),
                 mgp = c(2, 0.5, 0),
@@ -259,6 +261,7 @@ LoQ_functional <- function(df, col_lot = NULL, col_avg, col_sd_wl, target_cv,
 
   # save plot
   mod_plot <- grDevices::recordPlot()
+  dev.off()
 
   # get data from plot into a table for output
   pred_df <- unlist(new_preds) |> as.data.frame() |> stats::setNames("CV")

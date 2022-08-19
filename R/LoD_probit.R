@@ -234,7 +234,10 @@ LoD_probit <- function(df, col_lot = NULL, col_true_conc,
 
 
   #---- plot -----#
-  # graphics::plot.new()
+  graphics::plot.new()
+  dev.control("enable")
+
+
   graphics::par(mfrow = c(1, n_lots),
       mar = c(3, 3, 2, 1),
       mgp = c(2, 0.5, 0),
@@ -329,6 +332,8 @@ LoD_probit <- function(df, col_lot = NULL, col_true_conc,
 
   # save plot
   hit_rate_plot <- grDevices::recordPlot()
+  dev.off()
+
   graphics::par(mfrow = c(1,1))
 
   # compare model AIC (log transformed vs. not log transformed) for all lots

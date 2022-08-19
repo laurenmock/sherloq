@@ -143,6 +143,8 @@ LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
 
   # plot
   graphics::plot.new()
+  dev.control("enable")
+
   graphics::par(mfrow = c(1, 1),
       mar = c(3, 3, 2, 1),
       mgp = c(2, 0.5, 0),
@@ -237,6 +239,7 @@ LoQ_total_error <- function(df, col_lot = NULL, col_sample, col_ref, col_value,
                                                         col = "red", cex = 2))
 
   te_plot <- grDevices::recordPlot()
+  dev.off()
 
 
   # warning about always_sep_lots when n_lots > 3

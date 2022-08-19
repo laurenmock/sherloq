@@ -294,6 +294,8 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
   # plot profiles
   #opar <- par()
   graphics::plot.new()
+  dev.control("enable")
+
   graphics::par(mfrow = c(1,1),
                 mar = c(3, 3, 2, 1),
                 mgp = c(2, 0.5, 0),
@@ -330,7 +332,7 @@ LoD_precision_profile <- function(df, col_lot = NULL, col_sample = NULL, col_avg
 
   # save plot
   mod_plot <- grDevices::recordPlot()
-  #par(opar)
+  dev.off()
 
 
   #----- calculate LoD -----#

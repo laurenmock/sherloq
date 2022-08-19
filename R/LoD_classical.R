@@ -174,6 +174,7 @@ LoD_classical <- function(df, col_lot = NULL, col_sample, col_value, LoB, beta =
 
   # make box plot or histogram
   graphics::plot.new()
+  dev.control("enable")
 
   graphics::par(mfrow = c(1, n_lots),
                 mar = c(3, 3, 2, 1),
@@ -205,6 +206,7 @@ LoD_classical <- function(df, col_lot = NULL, col_sample, col_value, LoB, beta =
   }
 
   LoD_plot <- grDevices::recordPlot()
+  dev.off()
 
   # report LoD values and plot
   output <- list(LoD_plot, as.list(LoD_vals))
