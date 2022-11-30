@@ -15,7 +15,7 @@
 
 
 
-[vignettes](vignettes) contains a vignette with a demonstration of how to use `{sherloq}`. You can view this vignette in Bitbucket by opening the html file in this folder and clicking "raw file" on the top right, or by opening and knitting the Rmd file.
+[vignettes](vignettes) contains a vignette with a demonstration of how to use `{sherloq}`. You can view this vignette in GitHub by opening the html file in this folder and clicking "raw file" on the top right, or by opening and knitting the Rmd file.
 
 [R](R) folder contains the R functions.
 
